@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "ship": "git add -A && git commit -m 'chore: auto-save' --allow-empty && git push origin main && npx vercel --prod"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.98.0",
