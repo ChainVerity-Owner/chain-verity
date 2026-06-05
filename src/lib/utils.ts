@@ -1,5 +1,5 @@
-export function moneyM(v: number | undefined): string {
-  return "$" + Number(v || 0).toFixed(1) + "M";
+export function moneyM(v: number | undefined, curr = "£"): string {
+  return curr + Number(v || 0).toFixed(1) + "M";
 }
 
 export function fmt2(v: number | undefined): string {

@@ -1,11 +1,163 @@
 "use client";
 
 import { useState } from "react";
-import { useApp } from "@/context/AppContext";
-import { suppliersAll } from "@/lib/data";
+import { useApp, useSuppliers } from "@/context/AppContext";
 import { Badge } from "@/components/ui/Badge";
-import { KpiCard } from "@/components/ui/Card";
+import { KpiCardV2 } from "@/components/ui/Card";
 import { riskStateClass, riskStateLabel } from "@/lib/utils";
+import { EuropeMap } from "@/components/ui/Charts";
+import { Supplier } from "@/types";
+
+interface SubtierNode {
+  name: string;
+  tier: number;
+  country: string;
+  materials: string[];
+  estimatedRisk: string;
+  confidence: string;
+  rationale: string;
+}
+
+interface SubtierResult {
+  supplierName: string;
+  discoveredNodes: SubtierNode[];
+  concentrationRisks: string[];
+  dataGaps: string[];
+  recommendedActions: string[];
+}
+
+function SubtierModal({ supplier, onClose }: { supplier: Supplier; onClose: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<SubtierResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function riskVariant(r: string) {
+    if (r === "High") return "risk" as const;
+    if (r === "Medium") return "warn" as const;
+    return "ok" as const;
+  }
+
+  async function runDiscovery() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/discover-subtier", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supplierId: supplier.id,
+          supplierName: supplier.name,
+          category: supplier.category,
+          tier: supplier.tier ?? 1,
+          region: supplier.region,
+          materials: supplier.networkNodes?.flatMap((n) => n.materials) ?? [],
+          criticalParts: supplier.networkNodes?.flatMap((n) => n.sites.flatMap((s) => s.criticalParts)) ?? [],
+        }),
+      });
+      if (!res.ok) throw new Error("Discovery failed");
+      const data = await res.json();
+      setResult(data);
+    } catch {
+      setError("Discovery unavailable. Ensure ANTHROPIC_API_KEY is configured.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={onClose}>
+      <div style={{ background: "var(--card)", borderRadius: 16, padding: 24, maxWidth: 640, width: "100%", maxHeight: "80vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>AI Sub-Tier Discovery</div>
+            <div className="muted" style={{ fontSize: 12 }}>{supplier.name} · Tier {supplier.tier} · {supplier.region}</div>
+          </div>
+          <button className="btn" onClick={onClose}>✕</button>
+        </div>
+
+        {!result && !loading && (
+          <div style={{ textAlign: "center", padding: "24px 0" }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>🌐</div>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Discover sub-tier supply network</div>
+            <div className="muted" style={{ fontSize: 13, marginBottom: 20 }}>
+              Claude AI will map likely Tier {(supplier.tier ?? 1) + 1} and Tier {(supplier.tier ?? 1) + 2} sub-suppliers for {supplier.name} based on industrial supply chain intelligence.
+            </div>
+            <button className="btn primary" onClick={runDiscovery}>Discover Sub-Tiers</button>
+          </div>
+        )}
+
+        {loading && (
+          <div style={{ textAlign: "center", padding: "32px 0" }}>
+            <div className="muted" style={{ fontSize: 13 }}>Analysing supply network…</div>
+          </div>
+        )}
+
+        {error && (
+          <div style={{ color: "var(--risk)", fontSize: 13, padding: "12px 0" }}>{error}</div>
+        )}
+
+        {result && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>
+              {result.discoveredNodes.length} sub-tier nodes discovered
+            </div>
+
+            {result.discoveredNodes.map((node, i) => (
+              <div key={i} style={{ background: "var(--surface)", borderRadius: 10, padding: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13 }}>{node.name}</div>
+                    <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
+                      Tier {node.tier} · {node.country}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <Badge variant={riskVariant(node.estimatedRisk)} style={{ fontSize: 10 }}>
+                      {node.estimatedRisk} risk
+                    </Badge>
+                    <Badge variant="muted-b" style={{ fontSize: 10 }}>
+                      {node.confidence} confidence
+                    </Badge>
+                  </div>
+                </div>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
+                  Materials: {node.materials.join(", ")}
+                </div>
+                <div style={{ fontSize: 12 }}>{node.rationale}</div>
+              </div>
+            ))}
+
+            {result.concentrationRisks.length > 0 && (
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: "var(--warn)" }}>
+                  Concentration Risks
+                </div>
+                <ul style={{ paddingLeft: 18, margin: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                  {result.concentrationRisks.map((r, i) => (
+                    <li key={i} style={{ fontSize: 12, color: "var(--warn)" }}>{r}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {result.recommendedActions.length > 0 && (
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Recommended Actions</div>
+                <ul style={{ paddingLeft: 18, margin: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+                  {result.recommendedActions.map((a, i) => (
+                    <li key={i} style={{ fontSize: 12 }}>{a}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="note">Sub-tier discovery powered by Claude AI · results are indicative. Validate with supplier questionnaires.</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // Static n-tier relationship map
 const NETWORK_EDGES: { parentId: string; childId: string; material: string; criticalPart: string }[] = [
@@ -33,14 +185,15 @@ function riskColor(r: number) {
 }
 
 export function NetworkMap() {
-  const { setRoute } = useApp();
+  const { setRoute, clientMode } = useApp();
+  const suppliersAll = useSuppliers();
+  const isWB = clientMode === "wb";
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tierFilter, setTierFilter] = useState<string>("all");
+  const [subtierSupplier, setSubtierSupplier] = useState<Supplier | null>(null);
 
   const tiers = [1, 2, 3];
-  const tier1 = suppliersAll.filter((s) => s.tier === 1);
-  const tier2 = suppliersAll.filter((s) => s.tier === 2);
-  const tier3 = suppliersAll.filter((s) => s.tier === 3);
 
   const selectedSupplier = selectedId ? suppliersAll.find((s) => s.id === selectedId) : null;
   const upstreams = NETWORK_EDGES.filter((e) => e.childId === selectedId).map((e) => ({
@@ -58,12 +211,70 @@ export function NetworkMap() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {subtierSupplier && <SubtierModal supplier={subtierSupplier} onClose={() => setSubtierSupplier(null)} />}
       <div className="grid-4">
-        <KpiCard label="Mapped Suppliers" value={String(suppliersAll.length)} sub="Across all tiers" />
-        <KpiCard label="Production Sites" value={String(totalSites)} sub="Globally mapped" />
-        <KpiCard label="Critical Parts" value={String(totalParts)} sub="Under coverage" />
-        <KpiCard label="High-Risk Nodes" value={String(highRiskNodes)} sub="Risk score ≥ 70" />
+        <KpiCardV2 label="Mapped Suppliers" value={String(suppliersAll.length)} sub="Across all tiers" accent="var(--accent)" icon="🏭" />
+        <KpiCardV2 label="Production Sites" value={String(totalSites)} sub="Globally mapped" accent="var(--info)" icon="📍" />
+        <KpiCardV2 label="Critical Parts" value={String(totalParts)} sub="Under coverage" accent="var(--ok)" icon="⚙️" />
+        <KpiCardV2 label="High-Risk Nodes" value={String(highRiskNodes)} sub="Risk score ≥ 70" accent="var(--risk)" icon="⚠️" />
       </div>
+
+      {/* Supply Chain Map — mode-aware */}
+      {isWB ? (
+        <div className="map-card">
+          <div className="row" style={{ marginBottom: 14 }}>
+            <div>
+              <h2 style={{ margin: 0 }}>European Supply Network Map</h2>
+              <div className="card-sub" style={{ marginBottom: 0 }}>Worcester Bosch supplier footprint · hover pins for details · click to open supplier</div>
+            </div>
+          </div>
+          <EuropeMap onSelect={(id) => setRoute("supplier", { id })} />
+        </div>
+      ) : (
+        <div className="card">
+          <div className="row" style={{ alignItems: "flex-start", marginBottom: 14 }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Global Supply Network Map</h2>
+              <div className="card-sub" style={{ marginBottom: 0 }}>
+                Meridian Industrial Group supplier footprint · geographic risk concentration · live disruption events
+              </div>
+            </div>
+            <button className="btn primary" onClick={() => setRoute("geomap")}>
+              Open Full Risk Map →
+            </button>
+          </div>
+          <div style={{
+            background: "linear-gradient(180deg, #bfdbfe 0%, #dbeafe 60%, #e0f7fa 100%)",
+            borderRadius: 12, padding: "40px 24px",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
+            border: "1px solid var(--line)",
+          }}>
+            <div style={{ fontSize: 40 }}>🌎</div>
+            <div style={{ fontWeight: 700, fontSize: 15, textAlign: "center" }}>
+              Interactive global supplier map with live event overlay
+            </div>
+            <div className="muted" style={{ fontSize: 13, textAlign: "center", maxWidth: 440 }}>
+              Supply lanes from Chain Verity HQ (Newark, DE) to all {suppliersAll.length} mapped suppliers ·
+              Risk-colored pins · UFLPA enforcement events · ILA port disruptions
+            </div>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
+              {[
+                { label: "Mapped suppliers", value: String(suppliersAll.length), color: "var(--accent)" },
+                { label: "High risk", value: String(highRiskNodes), color: "var(--risk)" },
+                { label: "Active events", value: "5", color: "var(--warn)" },
+              ].map(({ label, value, color }) => (
+                <div key={label} style={{ textAlign: "center", background: "rgba(255,255,255,.6)", borderRadius: 10, padding: "10px 20px" }}>
+                  <div style={{ fontSize: 22, fontWeight: 800, color }}>{value}</div>
+                  <div className="muted" style={{ fontSize: 11 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+            <button className="btn primary" style={{ marginTop: 8 }} onClick={() => setRoute("geomap")}>
+              Open Interactive Map →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tier grid */}
       <div className="card">
@@ -122,6 +333,15 @@ export function NetworkMap() {
                           <Badge variant={riskStateClass(s.riskState, s.risk) as any} style={{ fontSize: 10, padding: "2px 7px" }}>
                             {riskStateLabel(s.riskState, s.risk)}
                           </Badge>
+                        </div>
+                        <div style={{ marginTop: 6 }}>
+                          <button
+                            className="btn"
+                            style={{ fontSize: 11, padding: "3px 8px" }}
+                            onClick={(e) => { e.stopPropagation(); setSubtierSupplier(s); }}
+                          >
+                            🌐 Discover Sub-Tiers
+                          </button>
                         </div>
                       </div>
                     );

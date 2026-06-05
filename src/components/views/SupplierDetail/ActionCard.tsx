@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { Supplier } from "@/types";
 import { getRec } from "@/lib/analytics";
@@ -10,9 +11,261 @@ interface ActionCardProps {
   supplier: Supplier;
 }
 
+interface AltSuggestion {
+  name: string;
+  headquarters: string;
+  viability?: number;
+  description: string;
+  why: string;
+}
+
+// Self-contained add button for use inside the modal (owns its own state)
+function ModalAddButton({ onAdd }: { onAdd: () => Promise<void> }) {
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+  async function handleClick() {
+    if (added) return;
+    setAdding(true);
+    try { await onAdd(); setAdded(true); } finally { setAdding(false); }
+  }
+  return (
+    <button
+      className="btn primary"
+      style={{ fontSize: 13 }}
+      onClick={handleClick}
+      disabled={adding || added}
+    >
+      {added ? "✓ Added to Directory" : adding ? "Adding…" : "Add to Directory"}
+    </button>
+  );
+}
+
 export function ActionCard({ supplier }: ActionCardProps) {
-  const { simulatedEscalation, openModal } = useApp();
+  const { simulatedEscalation, openModal, addSupplier } = useApp();
   const rec = getRec(supplier, simulatedEscalation);
+
+  const [altSuggestions, setAltSuggestions] = useState<AltSuggestion[]>([]);
+  const [altLoading, setAltLoading] = useState(false);
+  const [altLoaded, setAltLoaded] = useState(false);
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [learnMoreLoadingId, setLearnMoreLoadingId] = useState<string | null>(null);
+
+  async function handleFindAlternatives() {
+    setAltLoading(true);
+    try {
+      const res = await fetch("/api/suggest-alternatives", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          category: supplier.category,
+          region: supplier.region,
+          supplierName: supplier.name,
+        }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setAltSuggestions(Array.isArray(data) ? data : []);
+    } catch {
+      setAltSuggestions([]);
+    } finally {
+      setAltLoading(false);
+      setAltLoaded(true);
+    }
+  }
+
+  async function handleLearnMore(alt: AltSuggestion) {
+    setLearnMoreLoadingId(alt.name);
+    try {
+      const res = await fetch("/api/lookup-supplier", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: alt.name }),
+      });
+      const d = res.ok ? await res.json() : null;
+      const fmt2 = (n: number) => n?.toFixed(2) ?? "—";
+      const fmtPct = (n: number) => n != null ? (n * 100).toFixed(1) + "%" : "—";
+      const riskColor = (r: number) => r >= 70 ? "var(--risk)" : r >= 50 ? "var(--warn)" : "var(--ok)";
+
+      openModal(
+        alt.name,
+        alt.headquarters,
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 8 }}>
+          {/* Description */}
+          <div style={{ fontSize: 13, lineHeight: 1.6 }}>{alt.description}</div>
+          <div style={{ fontSize: 13, color: "var(--ok)", fontStyle: "italic" }}>{alt.why}</div>
+
+          {d && !d.error && (
+            <>
+              {/* Key metrics */}
+              <div className="kv">
+                <div className="box">
+                  <div className="muted" style={{ fontSize: 11 }}>Risk Score</div>
+                  <div style={{ fontWeight: 800, fontSize: 20, color: riskColor(d.risk) }}>{d.risk ?? "—"}</div>
+                </div>
+                <div className="box">
+                  <div className="muted" style={{ fontSize: 11 }}>Category</div>
+                  <b>{d.category ?? alt.name}</b>
+                </div>
+                <div className="box">
+                  <div className="muted" style={{ fontSize: 11 }}>Tier</div>
+                  <b>Tier {d.tier ?? "—"}</b>
+                </div>
+                <div className="box">
+                  <div className="muted" style={{ fontSize: 11 }}>Region</div>
+                  <b>{d.region ?? "—"}</b>
+                </div>
+                <div className="box">
+                  <div className="muted" style={{ fontSize: 11 }}>On-Time Delivery</div>
+                  <b>{d.onTime != null ? d.onTime + "%" : "—"}</b>
+                </div>
+                <div className="box">
+                  <div className="muted" style={{ fontSize: 11 }}>Quality (PPM)</div>
+                  <b>{d.qualityPPM ?? "—"}</b>
+                </div>
+              </div>
+
+              {/* Financial ratios */}
+              {d.ratios && (
+                <>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>Financial Ratios</div>
+                  <div className="kv">
+                    <div className="box">
+                      <div className="muted" style={{ fontSize: 11 }}>Debt / Equity</div>
+                      <b style={{ color: d.ratios.debtToEquity > 1.5 ? "var(--warn)" : undefined }}>
+                        {fmt2(d.ratios.debtToEquity)}
+                        {d.ratios.debtToEquity > 1.5 && " ⚠"}
+                      </b>
+                    </div>
+                    <div className="box">
+                      <div className="muted" style={{ fontSize: 11 }}>Net Profit Margin</div>
+                      <b style={{ color: d.ratios.netProfitMargin < 0.05 ? "var(--warn)" : undefined }}>
+                        {fmtPct(d.ratios.netProfitMargin)}
+                        {d.ratios.netProfitMargin < 0.05 && " ⚠"}
+                      </b>
+                    </div>
+                    <div className="box">
+                      <div className="muted" style={{ fontSize: 11 }}>Current Ratio</div>
+                      <b style={{ color: d.ratios.currentRatio < 1 ? "var(--risk)" : undefined }}>
+                        {fmt2(d.ratios.currentRatio)}
+                        {d.ratios.currentRatio < 1 && " ⚠"}
+                      </b>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Credit risk */}
+              {d.creditRisk && (
+                <>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>Credit Risk</div>
+                  <div className="kv">
+                    <div className="box">
+                      <div className="muted" style={{ fontSize: 11 }}>FRISK Score</div>
+                      <b>{d.creditRisk.friskScore}/10</b>
+                    </div>
+                    <div className="box">
+                      <div className="muted" style={{ fontSize: 11 }}>Credit Rating</div>
+                      <b>{d.creditRisk.creditRating}</b>
+                    </div>
+                    <div className="box">
+                      <div className="muted" style={{ fontSize: 11 }}>Bankruptcy Risk 12m</div>
+                      <b>{d.creditRisk.bankruptcyRisk12m}</b>
+                    </div>
+                    <div className="box">
+                      <div className="muted" style={{ fontSize: 11 }}>Payment Behavior</div>
+                      <b>{d.creditRisk.paymentBehavior}</b>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* ESG */}
+              {d.esg && (
+                <>
+                  <div style={{ fontWeight: 700, fontSize: 13 }}>ESG</div>
+                  <div className="kv">
+                    <div className="box">
+                      <div className="muted" style={{ fontSize: 11 }}>ESG Score</div>
+                      <b>{d.esg.score}/100 ({d.esg.grade})</b>
+                    </div>
+                    <div className="box">
+                      <div className="muted" style={{ fontSize: 11 }}>Labor Risk</div>
+                      <b>{d.esg.laborRisk}</b>
+                    </div>
+                    <div className="box">
+                      <div className="muted" style={{ fontSize: 11 }}>Environmental Risk</div>
+                      <b>{d.esg.environmentalRisk}</b>
+                    </div>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          <div className="inline" style={{ marginTop: 4 }}>
+            <ModalAddButton onAdd={() => handleAddToDirectory(alt)} />
+          </div>
+          <div className="note">Data is AI-estimated based on publicly available information.</div>
+        </div>
+      );
+    } catch {
+      openModal(
+        alt.name,
+        alt.headquarters,
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 13 }}>{alt.description}<br /><br />{alt.why}</div>
+          <div className="inline">
+            <ModalAddButton onAdd={() => handleAddToDirectory(alt)} />
+          </div>
+        </div>
+      );
+    } finally {
+      setLearnMoreLoadingId(null);
+    }
+  }
+
+  async function handleAddToDirectory(alt: AltSuggestion) {
+    setAddingId(alt.name);
+    try {
+      const res = await fetch("/api/lookup-supplier", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: alt.name }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      const makeId = () => `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      addSupplier({
+        id: makeId(),
+        name: String(data.name || alt.name),
+        ticker: data.ticker ? String(data.ticker) : undefined,
+        tier: data.tier ? (Number(data.tier) as 1 | 2 | 3) : undefined,
+        category: data.category ? String(data.category) : supplier.category,
+        region: data.region ? String(data.region) : undefined,
+        risk: data.risk ? Number(data.risk) : undefined,
+        spend: data.spend ? Number(data.spend) : undefined,
+        exposure: data.exposure ? Number(data.exposure) : undefined,
+        onTime: data.onTime ? Number(data.onTime) : undefined,
+        qualityPPM: data.qualityPPM ? Number(data.qualityPPM) : undefined,
+        duns: data.duns ? String(data.duns) : undefined,
+        website: data.website ? String(data.website) : undefined,
+        riskState: data.riskState ? String(data.riskState) : "STABLE",
+        ratios: data.ratios as Supplier["ratios"],
+        creditRisk: data.creditRisk ? { ...(data.creditRisk as object), lastUpdated: "Just added", source: "AI estimate" } as Supplier["creditRisk"] : undefined,
+        esg: data.esg as Supplier["esg"],
+        data: { updatedLabel: "Just added", confidence: "LOW" },
+      });
+      setAddedIds((prev) => new Set([...prev, alt.name]));
+    } catch {
+      // silently fail — user can add manually via Add Supplier
+    } finally {
+      setAddingId(null);
+    }
+  }
+  const [aiAnalysis, setAiAnalysis] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   const opts = ["Renegotiation of contract", "Find secondary source", "No recommended changes"];
   const bc = rec.action === "Find secondary source" ? "risk" : rec.action === "Renegotiation of contract" ? "warn" : "ok";
@@ -54,6 +307,44 @@ export function ActionCard({ supplier }: ActionCardProps) {
     );
   }
 
+  async function handleAIAnalysis() {
+    setAiLoading(true);
+    setAiAnalysis("");
+    const prompt = [
+      `Analyze this supplier and provide 3-4 specific, actionable recommendations. Be direct and data-driven.`,
+      `Supplier: ${supplier.name} (${supplier.ticker ?? "—"})`,
+      `Tier: ${supplier.tier} | Region: ${supplier.region} | Category: ${supplier.category}`,
+      `Risk Score: ${supplier.risk ?? "—"} | State: ${supplier.riskState ?? "STABLE"}`,
+      `Spend: $${((supplier.spend ?? 0) / 1e6).toFixed(1)}M | Exposure: $${((supplier.exposure ?? 0) / 1e6).toFixed(1)}M`,
+      supplier.ratios ? `D/E: ${supplier.ratios.debtToEquity} | Net margin: ${(supplier.ratios.netProfitMargin * 100).toFixed(1)}% | Current ratio: ${supplier.ratios.currentRatio}` : "",
+      supplier.creditRisk ? `FRISK: ${supplier.creditRisk.friskScore}/10 | Credit: ${supplier.creditRisk.creditRating} | Bankruptcy risk: ${supplier.creditRisk.bankruptcyRisk12m}` : "",
+      supplier.esg ? `ESG score: ${supplier.esg.score}/100 (${supplier.esg.grade}) | Labor risk: ${supplier.esg.laborRisk}` : "",
+      `Current recommendation: ${rec.action} — ${rec.reason}`,
+    ].filter(Boolean).join("\n");
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "user", content: prompt }] }),
+      });
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let acc = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += decoder.decode(value, { stream: true });
+        setAiAnalysis(acc);
+      }
+    } catch {
+      setAiAnalysis("Failed to generate analysis. Check ANTHROPIC_API_KEY.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   function handleAudit() {
     openModal(
       "Audit trail",
@@ -93,7 +384,16 @@ export function ActionCard({ supplier }: ActionCardProps) {
       <div className="inline" style={{ marginTop: 10 }}>
         <button className="btn" onClick={handleWhy}>Why this recommendation</button>
         <button className="btn" onClick={handleAudit}>Audit trail</button>
+        <button className="btn ai" onClick={handleAIAnalysis} disabled={aiLoading}>
+          {aiLoading ? "Analyzing…" : "AI Analysis"}
+        </button>
       </div>
+
+      {aiAnalysis && (
+        <div className="callout" style={{ marginTop: 12, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+          {aiAnalysis}
+        </div>
+      )}
 
       <div className="divider" />
       <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10 }}>Action options</div>
@@ -126,6 +426,87 @@ export function ActionCard({ supplier }: ActionCardProps) {
               <li key={i} style={{ fontSize: 13 }}>{g}</li>
             ))}
           </ol>
+        </>
+      )}
+
+      {rec.action === "Find secondary source" && (
+        <>
+          <div className="divider" />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>
+              Suggested alternative suppliers — {supplier.category}
+            </div>
+            {!altLoaded && (
+              <button className="btn ai" style={{ fontSize: 12 }} onClick={handleFindAlternatives} disabled={altLoading}>
+                {altLoading ? "Finding alternatives…" : "Find alternatives"}
+              </button>
+            )}
+            {altLoaded && (
+              <button className="btn" style={{ fontSize: 12 }} onClick={() => { setAltLoaded(false); setAltSuggestions([]); handleFindAlternatives(); }}>
+                Refresh
+              </button>
+            )}
+          </div>
+
+          {altLoading && (
+            <div className="callout" style={{ fontSize: 13 }}>
+              Searching for reputable {supplier.category} suppliers…
+            </div>
+          )}
+
+          {altLoaded && altSuggestions.length === 0 && (
+            <div className="muted" style={{ fontSize: 13 }}>No suggestions available. Try again.</div>
+          )}
+
+          {altSuggestions.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {altSuggestions.map((alt, idx) => {
+                const isAdded = addedIds.has(alt.name);
+                const isAdding = addingId === alt.name;
+                const viability = alt.viability ?? (10 - idx);
+                const viabilityColor = viability >= 8 ? "var(--ok)" : viability >= 5 ? "var(--warn)" : "var(--muted)";
+                return (
+                  <div key={alt.name} className="box" style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    {/* Rank indicator */}
+                    <div style={{ flexShrink: 0, width: 28, height: 28, borderRadius: "50%", background: idx === 0 ? "var(--accent)" : "var(--surface-2, var(--line))", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: idx === 0 ? "#fff" : "var(--muted)", marginTop: 2 }}>
+                      {idx + 1}
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ fontWeight: 700, fontSize: 13 }}>{alt.name}</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: viabilityColor }}>
+                          Viability {viability}/10
+                        </div>
+                      </div>
+                      <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{alt.headquarters}</div>
+                      <div style={{ fontSize: 12, marginTop: 5, lineHeight: 1.5 }}>{alt.description}</div>
+                      <div style={{ fontSize: 12, marginTop: 4, color: "var(--ok)", fontStyle: "italic" }}>{alt.why}</div>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                      <button
+                        className="btn"
+                        style={{ fontSize: 11, whiteSpace: "nowrap" }}
+                        onClick={() => handleLearnMore(alt)}
+                        disabled={learnMoreLoadingId === alt.name}
+                      >
+                        {learnMoreLoadingId === alt.name ? "Loading…" : "Learn More"}
+                      </button>
+                      <button
+                        className="btn"
+                        style={{ fontSize: 11, whiteSpace: "nowrap", color: isAdded ? "var(--ok)" : undefined }}
+                        onClick={() => !isAdded && handleAddToDirectory(alt)}
+                        disabled={isAdding || isAdded}
+                      >
+                        {isAdded ? "✓ Added" : isAdding ? "Adding…" : "Add to Directory"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </>
       )}
     </div>

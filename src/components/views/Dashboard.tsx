@@ -1,96 +1,254 @@
 "use client";
 
-import { useApp } from "@/context/AppContext";
-import { GLOBAL_ALERTS } from "@/lib/data";
-import { KpiCard } from "@/components/ui/Card";
+import { useApp, useSuppliers } from "@/context/AppContext";
+import { KpiCardV2 } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { MiniDonut, LegendDot, HeatBar, PulseDot, Sparkline, RiskGauge } from "@/components/ui/Charts";
 
-const NOW = "Updated: 3 days ago";
+function alertBadgeClass(type: string) {
+  if (type === "risk") return "risk" as const;
+  if (type === "contract") return "warn" as const;
+  return "info" as const;
+}
 
-const priorityItems = [
-  { label: "Meridian Chemicals", id: "pg", meta: "Renegotiation-first · ratios present · Observation day 47/90", badge: "Under Observation", cls: "obs" as const },
-  { label: "Borealis Plastics", id: "sup-a", meta: "High risk · credit downgrade", badge: "High Risk", cls: "risk" as const },
-  { label: "Halsted Manufacturing", id: "sup-001", meta: "Contract renewal in 45 days", badge: "Contract Event", cls: "warn" as const },
-  { label: "Chimera Alloys", id: "sup-003", meta: "Quality defect spike · Tier 3", badge: "Quality Alert", cls: "warn" as const },
-];
+function riskPillClass(risk: number) {
+  return risk >= 70 ? "high" : risk >= 45 ? "med" : "low";
+}
 
-const riskCategories = [
-  { name: "Raw Materials", pct: 72, color: "var(--risk)" },
-  { name: "Components", pct: 54, color: "var(--warn)" },
-  { name: "Logistics", pct: 28, color: "var(--ok)" },
-  { name: "Services", pct: 18, color: "var(--ok)" },
-];
+// ── CFO Dashboard ─────────────────────────────────────────────────────────────
+function CFODashboard() {
+  const { setRoute, currency, platformContracts, platformAlerts } = useApp();
+  const suppliers = useSuppliers();
 
-export function Dashboard() {
-  const { setRoute } = useApp();
+  const totalExposure = suppliers.reduce((sum, s) => sum + (s.exposure ?? 0), 0);
+  const highRisk = suppliers.filter((s) => (s.risk ?? 0) >= 65);
+  const underObservation = suppliers.filter((s) => s.observation);
+  const contractsAtRisk = platformContracts.filter((c) => ["Under Renegotiation", "Pending Renewal"].includes(c.status));
+  const contractValueAtRisk = contractsAtRisk.reduce((sum, c) => {
+    const v = parseFloat(c.value.replace(/[^0-9.]/g, ""));
+    return sum + (isNaN(v) ? 0 : v);
+  }, 0);
 
-  function alertBadgeClass(type: string) {
-    if (type === "risk") return "risk" as const;
-    if (type === "contract") return "warn" as const;
-    return "info" as const;
-  }
+  const riskBands = [
+    { label: "High risk", count: suppliers.filter(s => (s.risk ?? 0) >= 65).length, color: "#dc2626" },
+    { label: "Medium risk", count: suppliers.filter(s => (s.risk ?? 0) >= 45 && (s.risk ?? 0) < 65).length, color: "#d97706" },
+    { label: "Low risk", count: suppliers.filter(s => (s.risk ?? 0) < 45).length, color: "#16a34a" },
+  ];
+
+  const exposureCategories = [
+    { name: "Components", pct: 68 },
+    { name: "Raw Materials", pct: 52 },
+    { name: "Electronics", pct: 54 },
+    { name: "Logistics", pct: 21 },
+  ];
+
+  const exposureSparkData = [42, 48, 51, 55, 60, 58, 62, 67, 64, totalExposure];
+
+  // Portfolio avg risk per month from supplier riskHistory (12 monthly points)
+  const avgRiskTrend: number[] = Array.from({ length: 12 }, (_, i) => {
+    const vals = suppliers.map((s) => s.riskHistory?.[i]).filter((v): v is number => v != null);
+    return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+  });
+  const avgRiskNow = avgRiskTrend[avgRiskTrend.length - 1] || 0;
+  const avgRiskDelta = avgRiskNow - (avgRiskTrend[0] || 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Hero Banner */}
+      <div className="hero-card">
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <PulseDot color="#f87171" size={10} />
+            <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.85, letterSpacing: ".05em", textTransform: "uppercase" }}>Portfolio Risk Status</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 24, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: 36, fontWeight: 900, lineHeight: 1, letterSpacing: "-1px" }}>{currency}{totalExposure.toFixed(1)}M</div>
+              <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>Total supplier exposure at risk</div>
+            </div>
+            <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+              {[
+                { label: "High-risk suppliers", value: String(highRisk.length), color: "#fca5a5" },
+                { label: "Contracts at risk", value: String(contractsAtRisk.length), color: "#fde68a" },
+                { label: "Under observation", value: String(underObservation.length), color: "#c4b5fd" },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: s.color }}>{s.value}</div>
+                  <div style={{ fontSize: 11, opacity: 0.75, marginTop: 3 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* KPI Row */}
       <div className="grid-4">
-        <KpiCard label="Working Capital at Risk" value="$23.4M" sub={NOW} />
-        <KpiCard label="Exposure Pending Validation" value="$11.2M" sub={NOW} />
-        <KpiCard label="Under Renegotiation" value="6 suppliers" sub={NOW} />
-        <KpiCard label="Under Observation" value="4 suppliers" sub={NOW} />
+        <KpiCardV2
+          label="Total Exposure at Risk" value={`${currency}${totalExposure.toFixed(1)}M`}
+          sub="Across all active suppliers" accent="var(--risk)"
+          trend={-3.2} trendSuffix="%" trendHigherIsBetter={false}
+          sparkData={exposureSparkData}
+        />
+        <KpiCardV2
+          label="High-Risk Suppliers" value={String(highRisk.length)}
+          sub="Risk score ≥ 65" accent="var(--risk)"
+          trend={1} trendSuffix="" trendHigherIsBetter={false}
+          icon="⚠️"
+        />
+        <KpiCardV2
+          label="Contract Value at Risk" value={`${currency}${contractValueAtRisk.toFixed(1)}M`}
+          sub="Renegotiation or pending renewal" accent="var(--warn)"
+          trend={-8} trendSuffix="%" trendHigherIsBetter={false}
+        />
+        <KpiCardV2
+          label="Observation Windows" value={String(underObservation.length)}
+          sub="Active 90-day monitoring" accent="var(--info)"
+          icon="👁"
+        />
+        <KpiCardV2
+          label="Portfolio Avg Risk" value={String(avgRiskNow)}
+          sub="12-month trend across all suppliers"
+          accent={avgRiskNow >= 65 ? "var(--risk)" : avgRiskNow >= 45 ? "var(--warn)" : "var(--ok)"}
+          trend={avgRiskDelta} trendSuffix=" pts" trendHigherIsBetter={false}
+          sparkData={avgRiskTrend}
+        />
       </div>
 
       <div className="grid-32">
+        {/* Financial Risk Priority */}
         <div className="card">
-          <h2>Priority Items</h2>
-          <div className="card-sub">Highest-attention suppliers, sorted by urgency.</div>
-          <div className="list">
-            {priorityItems.map((p) => (
-              <div key={p.id} className="item" onClick={() => setRoute("supplier", { id: p.id })}>
-                <div className="row">
-                  <div>
-                    <div style={{ fontWeight: 600 }}>{p.label}</div>
-                    <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>{p.meta}</div>
+          <div className="row" style={{ marginBottom: 12 }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Financial Risk Priority</h2>
+              <div className="card-sub" style={{ marginBottom: 0 }}>Suppliers requiring executive attention</div>
+            </div>
+            <Badge variant="risk">{highRisk.length} critical</Badge>
+          </div>
+          <div className="list" style={{ marginTop: 0 }}>
+            {suppliers
+              .filter((s) => (s.risk ?? 0) >= 50)
+              .sort((a, b) => (b.risk ?? 0) - (a.risk ?? 0))
+              .slice(0, 5)
+              .map((s) => (
+                <div key={s.id} className="item" onClick={() => setRoute("supplier", { id: s.id })} style={{ cursor: "pointer", padding: "10px 12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {/* Risk bar indicator */}
+                    <div style={{ width: 4, height: 40, borderRadius: 2, background: (s.risk ?? 0) >= 65 ? "var(--risk)" : "var(--warn)", flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</div>
+                      <div className="muted" style={{ fontSize: 11, marginTop: 1 }}>
+                        {currency}{(s.exposure ?? 0).toFixed(1)}M exposure · {s.category} · Tier {s.tier}
+                      </div>
+                      <div style={{ marginTop: 5 }}>
+                        <HeatBar value={s.risk ?? 0} max={100} showLabel={false} height={5} />
+                      </div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div className={`risk-pill ${riskPillClass(s.risk ?? 0)}`}>{s.risk}</div>
+                      <div className="muted" style={{ fontSize: 10, marginTop: 3 }}>risk score</div>
+                    </div>
                   </div>
-                  <Badge variant={p.cls}>{p.badge}</Badge>
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
         </div>
 
+        {/* Risk Distribution */}
         <div className="card">
-          <h2>Risk by Category</h2>
-          <div className="card-sub">System-assigned, not user-editable.</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
-            {riskCategories.map((c) => (
+          <h2>Portfolio Risk Distribution</h2>
+          <div className="card-sub">Supplier portfolio breakdown by risk band</div>
+          <div className="chart-row" style={{ marginTop: 16 }}>
+            <MiniDonut
+              segments={riskBands.map(b => ({ value: b.count, color: b.color }))}
+              size={110}
+              thickness={22}
+              label={String(suppliers.length)}
+              sublabel="suppliers"
+            />
+            <div className="chart-legend">
+              {riskBands.map(b => (
+                <div key={b.label} className="chart-legend-item">
+                  <LegendDot color={b.color} label={b.label} />
+                  <span style={{ fontWeight: 700, fontSize: 13 }}>{b.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="divider" style={{ margin: "16px 0 12px" }} />
+          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em" }}>
+            Exposure by Category
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+            {exposureCategories.map(c => (
               <div key={c.name}>
-                <div className="row" style={{ marginBottom: 5 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 12 }}>
                   <span>{c.name}</span>
-                  <span className="mono" style={{ color: c.color }}>{c.pct}</span>
                 </div>
-                <div className="progress">
-                  <div className="progress-fill" style={{ width: `${c.pct}%`, background: c.color }} />
-                </div>
+                <HeatBar value={c.pct} max={100} height={7} />
               </div>
             ))}
           </div>
-          <div className="note">Categories derived from spend classification and contract tagging.</div>
+          <div className="note">Index derived from spend weighting and credit risk scores.</div>
         </div>
       </div>
 
+      {/* Contracts Table */}
       <div className="card">
-        <h2>Recent Alerts</h2>
-        <div className="card-sub">Click any alert to open the supplier.</div>
-        <div className="list">
-          {GLOBAL_ALERTS.map((a) => (
-            <div key={a.id} className="item" onClick={() => setRoute("supplier", { id: a.supplierId })}>
-              <div className="row">
-                <div>
-                  <Badge variant={alertBadgeClass(a.type)}>{a.type.toUpperCase()}</Badge>
-                  <div style={{ marginTop: 5 }}>{a.text}</div>
-                  <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{a.date}</div>
+        <h2>Contracts Requiring Attention</h2>
+        <div className="card-sub">Renewals and renegotiations in progress</div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Supplier</th><th>Contract</th><th>Value</th><th>Expires</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {contractsAtRisk.map((c) => (
+                <tr key={c.id}>
+                  <td><b>{c.supplierName}</b></td>
+                  <td className="mono" style={{ fontSize: 12 }}>{c.title}</td>
+                  <td>{c.value}</td>
+                  <td>{c.expires}</td>
+                  <td><Badge variant={c.status === "Under Renegotiation" ? "risk" : "warn"}>{c.status}</Badge></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Alerts Feed */}
+      <div className="card">
+        <div className="row" style={{ marginBottom: 12 }}>
+          <h2 style={{ margin: 0 }}>Recent Alerts</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <PulseDot color="var(--risk)" />
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>{platformAlerts.length} active</span>
+          </div>
+        </div>
+        <div className="timeline">
+          {platformAlerts.map((a, i) => (
+            <div key={a.id} className="timeline-item">
+              <div className="timeline-track">
+                <div className="timeline-dot" style={{ background: a.type === "risk" ? "var(--risk)" : a.type === "contract" ? "var(--warn)" : "var(--info)" }} />
+                {i < platformAlerts.length - 1 && <div className="timeline-line" />}
+              </div>
+              <div className="timeline-body">
+                <div
+                  className="alert-item"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setRoute("supplier", { id: a.supplierId })}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <Badge variant={alertBadgeClass(a.type)}>{a.type.toUpperCase()}</Badge>
+                      <span className="muted" style={{ fontSize: 11 }}>{a.date}</span>
+                    </div>
+                    <div style={{ fontSize: 13 }}>{a.text}</div>
+                  </div>
+                  <span style={{ color: "var(--muted)", flexShrink: 0 }}>›</span>
                 </div>
-                <span style={{ color: "var(--muted)" }}>›</span>
               </div>
             </div>
           ))}
@@ -98,4 +256,351 @@ export function Dashboard() {
       </div>
     </div>
   );
+}
+
+// ── Procurement Dashboard ─────────────────────────────────────────────────────
+function ProcurementDashboard() {
+  const { setRoute, currency, platformContracts, platformCrisisRooms, platformShipments, platformAlerts } = useApp();
+  const suppliers = useSuppliers();
+
+  const renewalsDue = platformContracts.filter((c) => ["Pending Renewal", "Under Renegotiation"].includes(c.status));
+  const lowOnTime = suppliers.filter((s) => s.onTime != null && s.onTime < 95);
+  const openCrisis = platformCrisisRooms.filter((c) => c.status === "Open");
+  const atRiskShipments = platformShipments.filter((s) => s.status !== "On Track");
+
+  // Derive operational priority items dynamically from current platform suppliers
+  const stateOrder: Record<string, number> = { "ESCALATED": 0, "MITIGATION IN PROGRESS": 1, "UNDER OBSERVATION": 2 };
+  const opItems = suppliers
+    .filter((s) => s.riskState && s.riskState !== "STABLE")
+    .sort((a, b) => (stateOrder[a.riskState ?? ""] ?? 3) - (stateOrder[b.riskState ?? ""] ?? 3))
+    .slice(0, 5)
+    .map((s) => {
+      const latestAlert = s.alerts?.[0]?.text;
+      const observation = s.observation ? `Observation Day ${s.observation.day}/${s.observation.total} — ` : "";
+      const meta = latestAlert ?? `${observation}Risk score ${s.risk} · ${s.riskState?.toLowerCase()}`;
+      const isEscalated = s.riskState === "ESCALATED";
+      const isMitigation = s.riskState === "MITIGATION IN PROGRESS";
+      return {
+        id: s.id,
+        label: s.name,
+        meta,
+        badge: isEscalated ? "Escalated" : isMitigation ? "Mitigation" : "Observation",
+        cls: (isEscalated ? "risk" : "warn") as "risk" | "warn" | "info",
+        urgent: isEscalated,
+      };
+    });
+  const urgentCount = opItems.filter((p) => p.urgent).length;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Hero Banner */}
+      <div className="hero-card">
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <PulseDot color="#fbbf24" size={10} />
+            <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.85, letterSpacing: ".05em", textTransform: "uppercase" }}>Operations Status</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 24, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: 36, fontWeight: 900, lineHeight: 1 }}>{renewalsDue.length}</div>
+              <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>Contract renewals requiring action</div>
+            </div>
+            <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+              {[
+                { label: "Crisis rooms open", value: String(openCrisis.length), color: "#fca5a5" },
+                { label: "Shipments at risk", value: String(atRiskShipments.length), color: "#fde68a" },
+                { label: "Delivery rate <95%", value: String(lowOnTime.length), color: "#c4b5fd" },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: s.color }}>{s.value}</div>
+                  <div style={{ fontSize: 11, opacity: 0.75, marginTop: 3 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid-4">
+        <KpiCardV2 label="Contract Renewals Due" value={String(renewalsDue.length)} sub="Within 90 days" accent="var(--warn)" trend={2} trendSuffix="" trendHigherIsBetter={false} icon="📄" />
+        <KpiCardV2 label="On-Time Rate <95%" value={String(lowOnTime.length)} sub="Suppliers below threshold" accent="var(--warn)" icon="⏱" />
+        <KpiCardV2 label="Active Crisis Rooms" value={String(openCrisis.length)} sub="Requiring action" accent="var(--risk)" icon="🚨" />
+        <KpiCardV2 label="Shipments at Risk" value={String(atRiskShipments.length)} sub="Delayed or customs hold" accent="var(--risk)" trend={-1} trendSuffix="" trendHigherIsBetter={false} />
+      </div>
+
+      <div className="grid-32">
+        {/* Operational Priority */}
+        <div className="card">
+          <div className="row" style={{ marginBottom: 12 }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Operational Priority</h2>
+              <div className="card-sub" style={{ marginBottom: 0 }}>Suppliers needing procurement action now</div>
+            </div>
+            <Badge variant="risk">{urgentCount} urgent</Badge>
+          </div>
+          <div className="timeline">
+            {opItems.map((p, i) => (
+              <div key={p.id} className="timeline-item">
+                <div className="timeline-track">
+                  <div className="timeline-dot" style={{ background: p.urgent ? "var(--risk)" : p.cls === "warn" ? "var(--warn)" : "var(--info)" }} />
+                  {i < opItems.length - 1 && <div className="timeline-line" />}
+                </div>
+                <div className="timeline-body">
+                  <div className="alert-item" style={{ cursor: "pointer" }} onClick={() => setRoute("supplier", { id: p.id })}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                        <span style={{ fontWeight: 600, fontSize: 13 }}>{p.label}</span>
+                        {p.urgent && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--risk)", background: "rgba(220,38,38,.1)", padding: "1px 6px", borderRadius: 999 }}>URGENT</span>}
+                      </div>
+                      <div className="muted" style={{ fontSize: 12 }}>{p.meta}</div>
+                      <div style={{ marginTop: 5 }}><Badge variant={p.cls}>{p.badge}</Badge></div>
+                    </div>
+                    <span style={{ color: "var(--muted)", flexShrink: 0, marginTop: 4 }}>›</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Shipment Tracker */}
+        <div className="card">
+          <h2>Shipment Tracker</h2>
+          <div className="card-sub">Active inbound shipments</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+            {platformShipments.map((s) => {
+              const isOk = s.status === "On Track";
+              const isRisk = s.status === "Customs Hold" || s.status === "Delayed";
+              const color = isRisk ? "var(--risk)" : isOk ? "var(--ok)" : "var(--warn)";
+              return (
+                <div key={s.id} className="box" style={{ padding: "10px 12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 4, alignSelf: "stretch", borderRadius: 2, background: color, minHeight: 32, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span className="mono" style={{ fontSize: 11 }}>{s.id}</span>
+                        <Badge variant={isRisk ? "risk" : isOk ? "ok" : "warn"}>{s.status}</Badge>
+                      </div>
+                      <div className="muted" style={{ fontSize: 11, marginTop: 3 }}>
+                        {s.origin} → {s.destination} · ETA {s.eta}
+                        {s.delayDays ? <span style={{ color: "var(--risk)", fontWeight: 700 }}> · +{s.delayDays}d delay</span> : ""}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Contracts Pipeline */}
+      <div className="card">
+        <h2>Contract Renewals Pipeline</h2>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Supplier</th><th>Contract</th><th>Value</th><th>Expires</th><th>Auto-Renew</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              {platformContracts.map((c) => (
+                <tr key={c.id}>
+                  <td><b>{c.supplierName}</b></td>
+                  <td className="mono" style={{ fontSize: 12 }}>{c.title}</td>
+                  <td>{c.value}</td>
+                  <td>{c.expires}</td>
+                  <td>{c.autoRenew ? <Badge variant="ok">Yes</Badge> : <Badge variant="muted-b">No</Badge>}</td>
+                  <td><Badge variant={c.status === "Under Renegotiation" ? "risk" : c.status === "Pending Renewal" ? "warn" : "ok"}>{c.status}</Badge></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Analyst Dashboard ─────────────────────────────────────────────────────────
+function AnalystDashboard() {
+  const { setRoute, currency, platformAlerts } = useApp();
+  const suppliers = useSuppliers();
+
+  const avgRisk = suppliers.length
+    ? Math.round(suppliers.reduce((s, x) => s + (x.risk ?? 0), 0) / suppliers.length)
+    : 0;
+  const csdddNonCompliant = suppliers.filter((s) => s.esg && !["Compliant"].includes(String(s.esg.csdddStatus)));
+  const highSpend = suppliers.filter((s) => (s.spend ?? 0) >= 10);
+  const elevatedDPS = suppliers.filter((s) => (s.risk ?? 0) >= 50);
+
+  const riskBands = [
+    { label: "Low (0–34)",    count: suppliers.filter((s) => (s.risk ?? 0) < 35).length,                                    color: "#16a34a" },
+    { label: "Med (35–64)",   count: suppliers.filter((s) => (s.risk ?? 0) >= 35 && (s.risk ?? 0) < 65).length,           color: "#d97706" },
+    { label: "High (65+)",    count: suppliers.filter((s) => (s.risk ?? 0) >= 65).length,                                   color: "#dc2626" },
+  ];
+
+  const avgSparkData = [38, 40, 41, 39, 43, 44, 42, 45, avgRisk];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Hero Banner */}
+      <div className="hero-card">
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <PulseDot color="#a5b4fc" size={10} />
+            <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.85, letterSpacing: ".05em", textTransform: "uppercase" }}>Risk Intelligence Dashboard</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 24, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: 36, fontWeight: 900, lineHeight: 1 }}>{avgRisk}</div>
+              <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>Portfolio average risk score</div>
+            </div>
+            <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+              {[
+                { label: "CSDDD non-compliant", value: String(csdddNonCompliant.length), color: "#fca5a5" },
+                { label: "Elevated DPS (≥50)", value: String(elevatedDPS.length), color: "#fde68a" },
+                { label: "High-spend suppliers", value: String(highSpend.length), color: "#c4b5fd" },
+              ].map(s => (
+                <div key={s.label} style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: s.color }}>{s.value}</div>
+                  <div style={{ fontSize: 11, opacity: 0.75, marginTop: 3 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid-4">
+        <KpiCardV2 label="Average Risk Score" value={String(avgRisk)} sub="Across all suppliers" accent={avgRisk >= 65 ? "var(--risk)" : avgRisk >= 45 ? "var(--warn)" : "var(--ok)"} trend={3} trendSuffix="" trendHigherIsBetter={false} sparkData={avgSparkData} />
+        <KpiCardV2 label="CSDDD Non-Compliant" value={String(csdddNonCompliant.length)} sub="Suppliers requiring action" accent="var(--risk)" icon="🌿" />
+        <KpiCardV2 label="High-Spend Suppliers" value={String(highSpend.length)} sub={`Annual spend ≥ ${currency}10M`} accent="var(--accent)" icon="💰" />
+        <KpiCardV2 label="Elevated DPS" value={String(elevatedDPS.length)} sub="Risk score ≥ 50" accent="var(--warn)" trend={1} trendSuffix="" trendHigherIsBetter={false} />
+      </div>
+
+      <div className="grid-32">
+        {/* Risk Signal Analysis */}
+        <div className="card">
+          <h2>Risk Signal Analysis</h2>
+          <div className="card-sub">Suppliers sorted by composite risk indicators</div>
+          <div className="list" style={{ marginTop: 0 }}>
+            {suppliers
+              .sort((a, b) => (b.risk ?? 0) - (a.risk ?? 0))
+              .map((s) => {
+                const sparkValues = s.ratios
+                  ? [s.ratios.currentRatio * 30, s.ratios.netProfitMargin * 200, 50, (s.risk ?? 0)]
+                  : [40, 45, 50, (s.risk ?? 0)];
+                const col = (s.risk ?? 0) >= 65 ? "#dc2626" : (s.risk ?? 0) >= 40 ? "#d97706" : "#16a34a";
+                return (
+                  <div key={s.id} className="item" onClick={() => setRoute("supplier", { id: s.id })} style={{ cursor: "pointer", padding: "10px 12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 4, height: 40, borderRadius: 2, background: col, flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 13 }}>{s.name}</div>
+                        <div className="muted" style={{ fontSize: 11, marginTop: 1 }}>
+                          {s.ratios
+                            ? `D/E ${s.ratios.debtToEquity.toFixed(2)} · Margin ${(s.ratios.netProfitMargin * 100).toFixed(1)}% · CR ${s.ratios.currentRatio.toFixed(2)}`
+                            : `On-time ${s.onTime ?? "—"}% · PPM ${s.qualityPPM ?? "—"}`}
+                        </div>
+                        <div style={{ marginTop: 5 }}>
+                          <HeatBar value={s.risk ?? 0} max={100} showLabel={false} height={4} />
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                        <Sparkline data={sparkValues} color={col} height={22} width={55} filled={false} />
+                        <div className={`risk-pill ${riskPillClass(s.risk ?? 0)}`}>{s.risk ?? "—"}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+
+        {/* Risk Distribution + ESG */}
+        <div className="card">
+          <h2>Risk Distribution</h2>
+          <div className="card-sub">Portfolio breakdown by risk band</div>
+
+          <div style={{ display: "flex", justifyContent: "center", margin: "16px 0 8px" }}>
+            <RiskGauge value={avgRisk} size={150} />
+          </div>
+
+          <div className="chart-row" style={{ marginTop: 16 }}>
+            <MiniDonut
+              segments={riskBands.map(b => ({ value: b.count, color: b.color }))}
+              size={90}
+              thickness={18}
+              label={String(suppliers.length)}
+              sublabel="total"
+            />
+            <div className="chart-legend">
+              {riskBands.map(b => (
+                <div key={b.label} className="chart-legend-item">
+                  <LegendDot color={b.color} label={b.label} />
+                  <span style={{ fontWeight: 700, fontSize: 13 }}>{b.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="divider" style={{ margin: "14px 0 10px" }} />
+          <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em" }}>
+            ESG CSDDD Status
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {suppliers.filter((s) => s.esg).map((s) => (
+              <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span style={{ fontSize: 12 }}>{s.name}</span>
+                <Badge variant={s.esg!.csdddStatus === "Compliant" ? "ok" : s.esg!.csdddStatus === "Non-Compliant" ? "risk" : "warn"}>
+                  {s.esg!.csdddStatus}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Alerts */}
+      <div className="card">
+        <div className="row" style={{ marginBottom: 12 }}>
+          <h2 style={{ margin: 0 }}>Recent Alerts</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <PulseDot color="var(--risk)" />
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>{platformAlerts.length} active</span>
+          </div>
+        </div>
+        <div className="timeline">
+          {platformAlerts.map((a, i) => (
+            <div key={a.id} className="timeline-item">
+              <div className="timeline-track">
+                <div className="timeline-dot" style={{ background: a.type === "risk" ? "var(--risk)" : a.type === "contract" ? "var(--warn)" : "var(--info)" }} />
+                {i < platformAlerts.length - 1 && <div className="timeline-line" />}
+              </div>
+              <div className="timeline-body">
+                <div className="alert-item" style={{ cursor: "pointer" }} onClick={() => setRoute("supplier", { id: a.supplierId })}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <Badge variant={alertBadgeClass(a.type)}>{a.type.toUpperCase()}</Badge>
+                      <span className="muted" style={{ fontSize: 11 }}>{a.date}</span>
+                    </div>
+                    <div style={{ fontSize: 13 }}>{a.text}</div>
+                  </div>
+                  <span style={{ color: "var(--muted)", flexShrink: 0 }}>›</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main Dashboard (role router) ──────────────────────────────────────────────
+export function Dashboard() {
+  const { role } = useApp();
+  if (role === "CFO") return <CFODashboard />;
+  if (role === "Procurement") return <ProcurementDashboard />;
+  return <AnalystDashboard />;
 }

@@ -1,5 +1,81 @@
 import { Supplier, SeriesPoint, Recommendation, MCResult } from "@/types";
 
+/**
+ * Composite risk score (0–100).
+ *
+ * Weights:
+ *   Financial health   30%  (current ratio, D/E, net profit margin)
+ *   Credit risk        25%  (FRISK score, insolvency probability)
+ *   ESG                15%  (inverse of ESG score)
+ *   Resiliency         15%  (inverse of resiliency overall, 1–10 scale)
+ *   Operational        15%  (on-time delivery, quality PPM)
+ *
+ * Missing components are skipped and the remaining weights renormalised.
+ * A baseline spend/exposure concentration premium is added on top.
+ */
+export function computeRisk(s: Supplier): number {
+  let score = 0;
+  let weight = 0;
+
+  // ── 1. Financial Health (30%) ───────────────────────────────────
+  if (s.ratios) {
+    const cr = s.ratios.currentRatio;
+    const crR = cr >= 2.0 ? 5 : cr >= 1.5 ? 18 : cr >= 1.2 ? 35 : cr >= 1.0 ? 55 : cr >= 0.8 ? 75 : 90;
+
+    const de = s.ratios.debtToEquity;
+    const deR = de <= 0.5 ? 5 : de <= 0.8 ? 18 : de <= 1.2 ? 38 : de <= 1.5 ? 58 : de <= 2.0 ? 75 : 90;
+
+    const pm = s.ratios.netProfitMargin;
+    const pmR = pm >= 0.15 ? 5 : pm >= 0.10 ? 18 : pm >= 0.07 ? 35 : pm >= 0.05 ? 55 : pm >= 0.0 ? 72 : 90;
+
+    score += ((crR + deR + pmR) / 3) * 0.30;
+    weight += 0.30;
+  }
+
+  // ── 2. Credit Risk (25%) ────────────────────────────────────────
+  if (s.creditRisk) {
+    const fr = s.creditRisk.friskScore;
+    const frR = fr >= 9 ? 5 : fr >= 8 ? 15 : fr >= 7 ? 28 : fr >= 6 ? 44 : fr >= 5 ? 58 : fr >= 4 ? 70 : fr >= 3 ? 82 : 92;
+
+    const ip = s.creditRisk.insolvencyProbability;
+    const ipR = ip <= 0.005 ? 5 : ip <= 0.01 ? 15 : ip <= 0.03 ? 32 : ip <= 0.06 ? 52 : ip <= 0.12 ? 70 : ip <= 0.18 ? 85 : 93;
+
+    score += (frR * 0.6 + ipR * 0.4) * 0.25;
+    weight += 0.25;
+  }
+
+  // ── 3. ESG (15%) — lower ESG = higher risk ──────────────────────
+  if (s.esg) {
+    score += (100 - s.esg.score) * 0.15;
+    weight += 0.15;
+  }
+
+  // ── 4. Resiliency (15%) — lower score = higher risk ─────────────
+  if (s.resiliency) {
+    score += Math.min(100, ((10 - s.resiliency.overall) / 9) * 100) * 0.15;
+    weight += 0.15;
+  }
+
+  // ── 5. Operational (15%) ────────────────────────────────────────
+  const ot = s.onTime;
+  const otR = ot == null ? 50 : ot >= 98 ? 5 : ot >= 95 ? 18 : ot >= 92 ? 35 : ot >= 90 ? 52 : ot >= 85 ? 70 : 85;
+
+  const ppm = s.qualityPPM;
+  const ppmR = ppm == null ? 50 : ppm <= 75 ? 5 : ppm <= 150 ? 20 : ppm <= 250 ? 40 : ppm <= 400 ? 60 : ppm <= 600 ? 78 : 90;
+
+  score += ((otR + ppmR) / 2) * 0.15;
+  weight += 0.15;
+
+  // Normalise for missing components
+  const base = weight > 0 ? score / weight : 50;
+
+  // ── Concentration premium (spend / exposure) ─────────────────────
+  const expPremium = (s.exposure ?? 0) > 8 ? 6 : (s.exposure ?? 0) > 5 ? 3 : 0;
+  const spendPremium = (s.spend ?? 0) > 15 ? 3 : 0;
+
+  return Math.round(Math.min(99, Math.max(5, base + expPremium + spendPremium)));
+}
+
 function hashSeed(s: string): number {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) {
@@ -133,6 +209,7 @@ export function getRec(s: Supplier, simulatedEscalation: Record<string, boolean>
   const pmW = (pmD != null && pmD < -2) || (margin != null && margin < 0.05);
   const ocfW = (latOcf != null && latOcf < 0) || (ocfD != null && ocfD < -5);
 
+  // Hard ratio/risk failures — escalate regardless of score
   if (risk >= 70 || (liqT && (levH || deW)) || (pmW && ocfW)) {
     return {
       action: "Find secondary source",
@@ -146,7 +223,14 @@ export function getRec(s: Supplier, simulatedEscalation: Record<string, boolean>
     };
   }
 
-  if (levH || liqT || deW || pmW || (latOcf != null && latOcf < 5)) {
+  // Low-risk stable suppliers: require concrete ratio evidence, not just synthetic trend noise
+  const hasConcreteRatioRisk = liqT || levH || (margin != null && margin < 0.05);
+  const multipleTrendSignals = [deW, pmW, ocfW].filter(Boolean).length >= 2;
+  const meetsRenegotiationBar = risk >= 50
+    ? (hasConcreteRatioRisk || deW || pmW)
+    : (hasConcreteRatioRisk || multipleTrendSignals);
+
+  if (meetsRenegotiationBar) {
     return {
       action: "Renegotiation of contract",
       reason: "Trend signals indicate financial stress building. Use commercial terms to reduce disruption risk.",

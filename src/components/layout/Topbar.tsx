@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useApp } from "@/context/AppContext";
+import { useApp, useSuppliers } from "@/context/AppContext";
 import { AppRole } from "@/context/AppContext";
-import { suppliersAll, GLOBAL_ALERTS } from "@/lib/data";
+import { suppliersAll } from "@/lib/data";
 import { downloadStub } from "@/lib/utils";
 
 const pageMeta: Record<string, { title: string; sub: string }> = {
@@ -18,29 +18,31 @@ const pageMeta: Record<string, { title: string; sub: string }> = {
   settings: { title: "Settings", sub: "Platform configuration." },
   events: { title: "Live Events", sub: "AI-monitored disruptions across 150+ risk categories · 400+ languages." },
   network: { title: "Network Map", sub: "N-tier supply chain mapping · Sites · Dependencies." },
-  esg: { title: "ESG & Compliance", sub: "Environmental, Social, Governance · CSDDD · LkSG · EUDR · CSRD." },
+  geomap: { title: "Risk Map", sub: "Global supplier footprint · Risk concentration · Live disruption events." },
+  esg: { title: "ESG & Compliance", sub: "Environmental, Social, Governance · Regulatory compliance · Certification tracking." },
   crisis: { title: "Crisis Response", sub: "WarRoom-style incident management · Impact tracking · Action coordination." },
 };
 
 export function Topbar() {
-  const { route, params, setRoute, goBack, canGoBack, openModal, closeModal, role, setRole, dismissedAlerts } = useApp();
+  const { route, params, setRoute, goBack, canGoBack, openModal, closeModal, role, setRole, dismissedAlerts, mobileSidebarOpen, setMobileSidebarOpen, platformAlerts } = useApp();
+  const allSuppliersForSearch = useSuppliers();
   const [search, setSearch] = useState("");
   const meta = pageMeta[route] || { title: route, sub: "" };
 
   const title = route === "supplier"
-    ? suppliersAll.find((s) => s.id === params.id)?.name || "Supplier"
+    ? allSuppliersForSearch.find((s) => s.id === params.id)?.name || "Supplier"
     : meta.title;
 
   const sub = route === "supplier"
     ? (() => {
-        const s = suppliersAll.find((x) => x.id === params.id);
+        const s = allSuppliersForSearch.find((x) => x.id === params.id);
         return s ? `Tier ${s.tier ?? "—"} · ${s.category || "—"} · ${s.region || "—"}` : "";
       })()
     : meta.sub;
 
   const allAlerts = [
-    ...GLOBAL_ALERTS,
-    ...suppliersAll.flatMap((s) => s.alerts || []),
+    ...platformAlerts,
+    ...allSuppliersForSearch.flatMap((s) => s.alerts || []),
   ];
   const undismissedCount = allAlerts.filter((a) => !dismissedAlerts[a.id]).length;
 
@@ -48,14 +50,14 @@ export function Topbar() {
     setSearch(value);
     const t = value.toLowerCase().trim();
     if (!t) return;
-    const m = suppliersAll.find((s) => (s.name || "").toLowerCase().includes(t));
+    const m = allSuppliersForSearch.find((s) => (s.name || "").toLowerCase().includes(t));
     if (m) setRoute("supplier", { id: m.id });
   }
 
   function handleExport() {
     const csvRows = [
       ["Supplier", "Tier", "Category", "Region", "Risk Score", "Risk State", "Spend", "Exposure"].join(","),
-      ...suppliersAll.map((s) =>
+      ...allSuppliersForSearch.map((s) =>
         [
           `"${s.name}"`,
           s.tier ?? "",
@@ -79,7 +81,7 @@ export function Topbar() {
           </button>
           <button className="btn" onClick={closeModal}>Cancel</button>
         </div>
-        <div className="note" style={{ marginTop: 8 }}>CSV includes all {suppliersAll.length} suppliers with risk scores, states, spend, and exposure.</div>
+        <div className="note" style={{ marginTop: 8 }}>CSV includes all {allSuppliersForSearch.length} suppliers with risk scores, states, spend, and exposure.</div>
       </div>
     );
   }
@@ -88,7 +90,16 @@ export function Topbar() {
     <div className="topbar">
       <div className="topbar-left">
         <button
-          className={`btn back-btn ${!canGoBack ? "hidden" : ""}`}
+          className="btn back-btn topbar-hamburger"
+          onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+          aria-label="Toggle menu"
+        >
+          <span className="hamburger-icon">
+            <span /><span /><span />
+          </span>
+        </button>
+        <button
+          className={`btn back-btn topbar-back ${!canGoBack ? "hidden" : ""}`}
           onClick={goBack}
         >
           ← Back

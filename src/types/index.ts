@@ -73,6 +73,10 @@ export interface ESGProfile {
   csdddStatus: "Compliant" | "In Progress" | "Non-Compliant" | "N/A" | "Not Started";
   lksgStatus: "Compliant" | "In Progress" | "Non-Compliant" | "N/A" | "Not Started";
   csrdStatus: "Compliant" | "In Progress" | "Non-Compliant" | "N/A" | "Not Started";
+  // ── US regulatory fields ──────────────────────────────────────────────────────
+  uflpaStatus?: "Compliant" | "Under Review" | "Non-Compliant" | "N/A" | "Not Assessed";
+  scope3Status?: "Reported" | "In Progress" | "Not Started" | "N/A";
+  conflictMineralsStatus?: "Compliant" | "In Progress" | "Non-Compliant" | "N/A";
   laborRisk: "Low" | "Medium" | "High";
   environmentalRisk: "Low" | "Medium" | "High";
   carbonFootprint?: string;     // e.g. "12.4kt CO₂e"
@@ -175,8 +179,17 @@ export interface CrisisAction {
   done: boolean;
 }
 
+// ── Contract Contact ──────────────────────────────────────────────────────────
+export interface ContractContact {
+  name: string;
+  title?: string;
+  email?: string;
+  phone?: string;
+}
+
 // ── Supplier (extended) ────────────────────────────────────────────────────────
 export interface Supplier {
+  website?: string;
   id: string;
   name: string;
   ticker?: string;
@@ -205,6 +218,8 @@ export interface Supplier {
   resiliency?: ResiliencyScore;
   networkNodes?: NetworkNode[];
   parentSupplierIds?: string[];  // tier 2+ parents
+  riskHistory?: number[];        // 12-month monthly risk score trend
+  countryCode?: string;          // ISO-2 e.g. "DE", "IT", "NL"
 }
 
 export interface Contract {
@@ -233,6 +248,102 @@ export interface SeriesPoint {
   value: number;
 }
 
+// ── Certification tracking ────────────────────────────────────────────────────
+export interface Certification {
+  name: string;         // e.g. "ISO 9001:2015"
+  standard: string;     // short code e.g. "ISO 9001"
+  issuer: string;
+  issued: string;       // YYYY-MM-DD
+  expires: string;      // YYYY-MM-DD
+  status: "Valid" | "Expiring Soon" | "Expired" | "In Renewal";
+  scope?: string;
+}
+
+// ── Business Continuity / Recovery Modeling ───────────────────────────────────
+export interface RecoveryProfile {
+  inventoryBufferDays: number;   // days of stock on hand
+  timeToSurvive: number;         // days before production line stops
+  timeToRecover: number;         // days to qualify an alternative
+  criticalComponents: string[];  // part names this supplier provides
+  affectedProductLines: string[];
+  alternativeQualified: boolean;
+  safetyStockRecommendation: number; // recommended buffer days
+  lastReviewed: string;
+}
+
+// ── BOM / Part-level risk ─────────────────────────────────────────────────────
+export interface BOMItem {
+  partNumber: string;
+  partName: string;
+  supplierId: string;
+  quantity: number;
+  unitCost: number;
+  leadTimeDays: number;
+  soloSourced: boolean;
+  riskScore: number;
+}
+
+export interface ProductLine {
+  id: string;
+  name: string;
+  model: string;
+  annualVolume: number;
+  bomItems: BOMItem[];
+}
+
+// ── Commodity price intelligence ──────────────────────────────────────────────
+export interface CommodityPrice {
+  id: string;
+  name: string;
+  unit: string;
+  currentPrice: number;
+  currency: string;
+  priceHistory: number[];   // 9 quarterly data points
+  changePercent: number;    // vs 3 months ago
+  trend: "Rising" | "Falling" | "Stable";
+  volatility: "Low" | "Medium" | "High";
+  affectedCategories: string[];
+  affectedSupplierIds: string[];
+  alert?: string;
+}
+
+// ── Supplier self-assessment ──────────────────────────────────────────────────
+export type AssessmentStatus = "Not Sent" | "Sent" | "In Progress" | "Completed" | "Overdue";
+
+export interface Assessment {
+  supplierId: string;
+  supplierName: string;
+  templateId: string;
+  templateName: string;
+  sentDate?: string;
+  dueDate?: string;
+  completedDate?: string;
+  status: AssessmentStatus;
+  completionPct: number;
+  riskFlags: number;
+  responses?: Record<string, string>;
+}
+
+// ── Industry benchmark ────────────────────────────────────────────────────────
+export interface IndustryBenchmark {
+  sector: string;
+  avgRiskScore: number;
+  avgDPS: number;
+  avgOnTime: number;
+  avgESGScore: number;
+  sampleSize: number;
+}
+
+// ── Data source feed ──────────────────────────────────────────────────────────
+export interface DataFeed {
+  name: string;        // e.g. "Dun & Bradstreet"
+  shortName: string;   // e.g. "D&B"
+  type: "Financial" | "ESG" | "Events" | "Logistics" | "Credit";
+  lastRefreshed: string;
+  status: "Live" | "Delayed" | "Offline";
+  recordsUpdated: number;
+}
+
 export type Route =
   | "dashboard"
   | "alerts"
@@ -246,7 +357,12 @@ export type Route =
   | "events"
   | "network"
   | "esg"
-  | "crisis";
+  | "crisis"
+  | "recovery"
+  | "commodities"
+  | "assessments"
+  | "subtier"
+  | "geomap";
 
 export interface RouteState {
   route: Route;

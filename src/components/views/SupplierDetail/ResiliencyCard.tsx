@@ -1,6 +1,7 @@
 "use client";
 
 import { Supplier } from "@/types";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 interface ResiliencyCardProps {
   supplier: Supplier;
@@ -12,11 +13,22 @@ function scoreColor(v: number) {
   return "var(--risk)";
 }
 
+const DIM_TIPS: Record<string, string> = {
+  Transparency:    "Willingness to share data about sub-tier suppliers, financial health, and operational capacity. Higher scores indicate greater data-sharing maturity.",
+  Network:         "Depth of sub-tier supply chain mapping — how well-understood the extended supply chain is beyond Tier 1. Low scores indicate unknown Tier 2/3 dependencies.",
+  Continuity:      "Business continuity plan (BCP) coverage — whether the supplier has documented, tested recovery plans for key disruption scenarios including natural disaster, fire, and cyber.",
+  Performance:     "Operational delivery track record — on-time in full (OTIF) history, quality PPM trend, and contractual SLA compliance over the past 12 months.",
+  "SCRM Maturity": "Supply Chain Risk Management program maturity — how sophisticated and embedded the supplier's own risk management processes are, including board-level oversight.",
+};
+
 function ScoreDim({ label, value }: { label: string; value: number }) {
   const col = scoreColor(value);
   return (
     <div className="box">
-      <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>{label}</div>
+      <div className="muted" style={{ fontSize: 11, marginBottom: 4, display: "flex", alignItems: "center" }}>
+        {label}
+        {DIM_TIPS[label] && <InfoTip text={DIM_TIPS[label]} width={220} />}
+      </div>
       <div style={{ fontSize: 22, fontWeight: 800, color: col }}>{value.toFixed(1)}</div>
       <div className="progress" style={{ marginTop: 6, height: 4 }}>
         <div className="progress-fill" style={{ width: `${(value / 10) * 100}%`, background: col }} />
@@ -36,7 +48,13 @@ export function ResiliencyCard({ supplier }: ResiliencyCardProps) {
     <div className="card">
       <div className="row" style={{ alignItems: "flex-start", marginBottom: 12 }}>
         <div>
-          <h2 style={{ margin: 0 }}>Resiliency Score</h2>
+          <div style={{ display: "flex", alignItems: "center" }}>
+            <h2 style={{ margin: 0 }}>Resiliency Score</h2>
+            <InfoTip
+              text="5-dimension composite score measuring how well-prepared this supplier is to withstand and recover from disruptions. Based on Resilinc R Score methodology. Scored 1–10; below 5 indicates fragile supply continuity."
+              width={250}
+            />
+          </div>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
             5-dimension composite score · Updated {r.lastUpdated} · Resilinc R Score methodology
           </div>

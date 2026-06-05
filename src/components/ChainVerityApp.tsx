@@ -1,6 +1,7 @@
 "use client";
 
 import { AppProvider, useApp } from "@/context/AppContext";
+import { ROLE_ROUTES } from "@/lib/roles";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { Modal } from "@/components/layout/Modal";
@@ -17,9 +18,17 @@ import { LiveEvents } from "@/components/views/LiveEvents";
 import { NetworkMap } from "@/components/views/NetworkMap";
 import { ESGCompliance } from "@/components/views/ESGCompliance";
 import { CrisisResponse } from "@/components/views/CrisisResponse";
+import { RecoveryIntelligence } from "@/components/views/RecoveryIntelligence";
+import { Commodities } from "@/components/views/Commodities";
+import { Assessments } from "@/components/views/Assessments";
+import { SubTierIntelligence } from "@/components/views/SubTierIntelligence";
+import { GeoRiskMap } from "@/components/views/GeoRiskMap";
+import { AIChat } from "@/components/ui/AIChat";
 
 function AppContent() {
-  const { route } = useApp();
+  const { route, role, mobileSidebarOpen, setMobileSidebarOpen } = useApp();
+  const allowed = ROLE_ROUTES[role];
+  const activeRoute = allowed.includes(route) ? route : "dashboard";
 
   const views: Record<string, React.ReactNode> = {
     dashboard: <Dashboard />,
@@ -35,16 +44,25 @@ function AppContent() {
     network: <NetworkMap />,
     esg: <ESGCompliance />,
     crisis: <CrisisResponse />,
+    recovery: <RecoveryIntelligence />,
+    commodities: <Commodities />,
+    assessments: <Assessments />,
+    subtier: <SubTierIntelligence />,
+    geomap: <GeoRiskMap />,
   };
 
   return (
     <div className="app">
+      {mobileSidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setMobileSidebarOpen(false)} />
+      )}
       <Sidebar />
       <main className="main">
         <Topbar />
-        <div className="content">{views[route] ?? <Dashboard />}</div>
+        <div className="content">{views[activeRoute] ?? <Dashboard />}</div>
       </main>
       <Modal />
+      <AIChat />
     </div>
   );
 }

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useApp } from "@/context/AppContext";
-import { LIVE_EVENTS, SHIPMENTS, suppliersAll } from "@/lib/data";
-import { EventCategory, EventSeverity } from "@/types";
+import { useState, useEffect } from "react";
+import { useApp, useSuppliers } from "@/context/AppContext";
+import { suppliersAll } from "@/lib/data";
+import { EventCategory, EventSeverity, LiveEvent } from "@/types";
 import { Badge } from "@/components/ui/Badge";
-import { KpiCard } from "@/components/ui/Card";
+import { KpiCardV2 } from "@/components/ui/Card";
+import { PulseDot } from "@/components/ui/Charts";
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
   natural_disaster: "Natural Disaster",
@@ -38,30 +39,54 @@ function shipmentStatusVariant(s: string) {
 }
 
 export function LiveEvents() {
-  const { setRoute } = useApp();
+  const { setRoute, platformEvents, platformShipments, currency } = useApp();
+  const suppliers = useSuppliers();
   const [catFilter, setCatFilter] = useState<string>("all");
   const [sevFilter, setSevFilter] = useState<string>("all");
+  const [eonetEvents, setEonetEvents] = useState<LiveEvent[]>([]);
+  const [eonetStatus, setEonetStatus] = useState<"loading" | "live" | "error">("loading");
 
-  const filtered = LIVE_EVENTS.filter((e) => {
+  useEffect(() => {
+    fetch("/api/eonet")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setEonetEvents(data as LiveEvent[]);
+          setEonetStatus("live");
+        } else {
+          setEonetStatus("error");
+        }
+      })
+      .catch(() => setEonetStatus("error"));
+  }, []);
+
+  const allEvents = [...eonetEvents, ...platformEvents];
+
+  // Only show events where at least one affected supplier is mapped
+  const mappedEvents = allEvents.filter((e) =>
+    e.affectedSupplierIds?.some((id) => suppliers.find((s) => s.id === id))
+  );
+
+  const filtered = mappedEvents.filter((e) => {
     if (catFilter !== "all" && e.category !== catFilter) return false;
     if (sevFilter !== "all" && e.severity !== sevFilter) return false;
     return true;
   });
 
-  const active = LIVE_EVENTS.filter((e) => e.status === "Active").length;
-  const critical = LIVE_EVENTS.filter((e) => e.severity === "critical").length;
-  const delayedShipments = SHIPMENTS.filter((s) => s.delayDays && s.delayDays > 0).length;
-  const totalExposure = SHIPMENTS.filter((s) => s.delayDays).reduce((sum, s) => {
-    return sum + parseFloat(s.value.replace("$", "").replace("M", ""));
+  const active = mappedEvents.filter((e) => e.status === "Active").length;
+  const critical = mappedEvents.filter((e) => e.severity === "critical").length;
+  const delayedShipments = platformShipments.filter((s) => s.delayDays && s.delayDays > 0).length;
+  const totalExposure = platformShipments.filter((s) => s.delayDays).reduce((sum, s) => {
+    return sum + parseFloat(s.value.replace(/[^0-9.]/g, ""));
   }, 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div className="grid-4">
-        <KpiCard label="Active Events" value={String(active)} sub="Requiring attention" />
-        <KpiCard label="Critical Severity" value={String(critical)} sub="Immediate action needed" />
-        <KpiCard label="Delayed Shipments" value={String(delayedShipments)} sub="Across all carriers" />
-        <KpiCard label="Shipment Value at Risk" value={`$${totalExposure.toFixed(1)}M`} sub="Delayed or at-risk cargo" />
+        <KpiCardV2 label="Active Events" value={String(active)} sub="Requiring attention" accent="var(--risk)" icon="🔴" trend={2} trendSuffix="" trendHigherIsBetter={false} />
+        <KpiCardV2 label="Critical Severity" value={String(critical)} sub="Immediate action needed" accent="var(--risk)" icon="🚨" />
+        <KpiCardV2 label="Delayed Shipments" value={String(delayedShipments)} sub="Across all carriers" accent="var(--warn)" icon="🚢" />
+        <KpiCardV2 label="Shipment Value at Risk" value={`${currency}${totalExposure.toFixed(1)}M`} sub="Delayed or at-risk cargo" accent="var(--warn)" />
       </div>
 
       {/* Event feed */}
@@ -71,6 +96,16 @@ export function LiveEvents() {
             <h2 style={{ margin: 0 }}>Live Disruption Events</h2>
             <div className="card-sub" style={{ marginBottom: 0 }}>
               AI-monitored across 150+ risk categories · 400+ languages · Sourced from media, regulatory, and logistics feeds
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: eonetStatus === "live" ? "var(--ok)" : eonetStatus === "loading" ? "var(--warn)" : "var(--muted)" }} />
+              <span className="muted" style={{ fontSize: 11 }}>
+                {eonetStatus === "live"
+                  ? `NASA EONET: ${eonetEvents.length} active natural events · refreshed 15 min`
+                  : eonetStatus === "loading"
+                  ? "Fetching NASA EONET events…"
+                  : "NASA EONET unavailable — showing curated events"}
+              </span>
             </div>
           </div>
           <div className="inline">
@@ -90,62 +125,88 @@ export function LiveEvents() {
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filtered.map((ev) => {
+        <div className="timeline">
+          {filtered.map((ev, idx) => {
             const affected = ev.affectedSupplierIds
-              .map((id) => suppliersAll.find((s) => s.id === id)?.name)
+              .map((id) => suppliers.find((s) => s.id === id)?.name)
               .filter(Boolean);
+            const isActive = ev.status === "Active";
+            const isCritical = ev.severity === "critical";
+            const dotColor = isCritical ? "#dc2626" : ev.severity === "high" ? "#d97706" : ev.severity === "medium" ? "#2563eb" : "#6b7280";
+
+            const isLive = !!(ev as { isLive?: boolean }).isLive;
             return (
-              <div key={ev.id} className="item" style={{ cursor: "default" }}>
-                <div className="row" style={{ alignItems: "flex-start", gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <div className="inline" style={{ marginBottom: 6 }}>
-                      <Badge variant={severityVariant(ev.severity)}>{ev.severity.toUpperCase()}</Badge>
-                      <Badge variant="muted-b">{CATEGORY_LABELS[ev.category]}</Badge>
-                      <Badge variant={statusVariant(ev.status)}>{ev.status}</Badge>
-                      <span className="muted" style={{ fontSize: 11 }}>{ev.region} · {ev.date}</span>
-                    </div>
-                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{ev.title}</div>
-                    <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>{ev.detail}</div>
-                    <div className="inline" style={{ gap: 14 }}>
-                      {ev.estimatedImpact && (
-                        <span style={{ fontSize: 12 }}>
-                          <span className="muted">Impact: </span>
-                          <b style={{ color: "var(--risk)" }}>{ev.estimatedImpact}</b>
-                        </span>
-                      )}
-                      {ev.leadTimeExtension && (
-                        <span style={{ fontSize: 12 }}>
-                          <span className="muted">Lead time: </span>
-                          <b>+{ev.leadTimeExtension}</b>
-                        </span>
-                      )}
-                      {ev.predictedEnd && (
-                        <span style={{ fontSize: 12 }}>
-                          <span className="muted">Est. end: </span>
-                          <b>{ev.predictedEnd}</b>
-                        </span>
-                      )}
-                    </div>
+              <div key={ev.id} className="timeline-item">
+                <div className="timeline-track">
+                  <div style={{ position: "relative", width: 14, height: 14, marginTop: 3, flexShrink: 0 }}>
+                    {isActive && <span className="pulse-dot-el" style={{ position: "absolute", inset: -3, borderRadius: "50%", display: "block", background: dotColor, opacity: 0.2 }} />}
+                    <PulseDot color={dotColor} size={14} />
                   </div>
-                  <div style={{ minWidth: 180, flexShrink: 0 }}>
-                    <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Affected suppliers</div>
-                    {affected.length === 0
-                      ? <span className="muted" style={{ fontSize: 12 }}>None mapped</span>
-                      : affected.map((name, i) => (
-                          <div
-                            key={i}
-                            style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", cursor: "pointer", marginBottom: 2 }}
-                            onClick={() => {
-                              const id = ev.affectedSupplierIds[i];
-                              setRoute("supplier", { id });
-                            }}
-                          >
-                            {name} →
-                          </div>
-                        ))
-                    }
-                    <div className="muted" style={{ fontSize: 10, marginTop: 6 }}>Source: {ev.source}</div>
+                  {idx < filtered.length - 1 && <div className="timeline-line" style={{ marginTop: 4 }} />}
+                </div>
+                <div className="timeline-body">
+                  <div style={{
+                    border: "1px solid var(--line)",
+                    borderLeft: `3px solid ${dotColor}`,
+                    borderRadius: 12,
+                    background: "var(--surface)",
+                    padding: "12px 14px",
+                    transition: "background .1s",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6, alignItems: "center" }}>
+                          <Badge variant={severityVariant(ev.severity)}>{ev.severity.toUpperCase()}</Badge>
+                          <Badge variant="muted-b">{CATEGORY_LABELS[ev.category as EventCategory] ?? ev.category}</Badge>
+                          <Badge variant={statusVariant(ev.status)}>{ev.status}</Badge>
+                          {isLive && (
+                            <span style={{ fontSize: 9, fontWeight: 800, color: "var(--ok)", letterSpacing: ".06em", border: "1px solid var(--ok)", borderRadius: 4, padding: "1px 5px" }}>
+                              ● LIVE
+                            </span>
+                          )}
+                          <span className="muted" style={{ fontSize: 11 }}>{ev.region} · {ev.date}</span>
+                        </div>
+                        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{ev.title}</div>
+                        <div className="muted" style={{ fontSize: 12, marginBottom: 8 }}>{ev.detail}</div>
+                        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                          {ev.estimatedImpact && (
+                            <div style={{ background: "rgba(220,38,38,.06)", border: "1px solid rgba(220,38,38,.15)", borderRadius: 8, padding: "4px 10px", fontSize: 12 }}>
+                              <span className="muted">Impact: </span>
+                              <b style={{ color: "var(--risk)" }}>{ev.estimatedImpact}</b>
+                            </div>
+                          )}
+                          {ev.leadTimeExtension && (
+                            <div style={{ background: "rgba(217,119,6,.06)", border: "1px solid rgba(217,119,6,.15)", borderRadius: 8, padding: "4px 10px", fontSize: 12 }}>
+                              <span className="muted">Lead time: </span>
+                              <b>+{ev.leadTimeExtension}</b>
+                            </div>
+                          )}
+                          {ev.predictedEnd && (
+                            <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 8, padding: "4px 10px", fontSize: 12 }}>
+                              <span className="muted">Est. end: </span>
+                              <b>{ev.predictedEnd}</b>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ minWidth: 160, flexShrink: 0, borderLeft: "1px solid var(--line)", paddingLeft: 12 }}>
+                        <div className="muted" style={{ fontSize: 11, marginBottom: 5, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".04em" }}>Affected</div>
+                        {affected.length === 0
+                          ? <span className="muted" style={{ fontSize: 12 }}>None mapped</span>
+                          : affected.map((name, i) => (
+                              <div
+                                key={i}
+                                style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", cursor: "pointer", marginBottom: 3, display: "flex", alignItems: "center", gap: 4 }}
+                                onClick={() => setRoute("supplier", { id: ev.affectedSupplierIds[i] })}
+                              >
+                                <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, display: "inline-block", flexShrink: 0 }} />
+                                {name} →
+                              </div>
+                            ))
+                        }
+                        <div className="muted" style={{ fontSize: 10, marginTop: 6 }}>Source: {ev.source}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -173,8 +234,8 @@ export function LiveEvents() {
               </tr>
             </thead>
             <tbody>
-              {SHIPMENTS.map((sh) => {
-                const supplier = suppliersAll.find((s) => s.id === sh.supplierId);
+              {platformShipments.map((sh) => {
+                const supplier = suppliers.find((s) => s.id === sh.supplierId);
                 return (
                   <tr key={sh.id}>
                     <td className="mono">{sh.id}</td>

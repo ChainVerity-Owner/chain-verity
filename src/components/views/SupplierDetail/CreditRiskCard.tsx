@@ -2,6 +2,7 @@
 
 import { Supplier } from "@/types";
 import { Badge } from "@/components/ui/Badge";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 interface CreditRiskCardProps {
   supplier: Supplier;
@@ -49,14 +50,22 @@ export function CreditRiskCard({ supplier }: CreditRiskCardProps) {
 
       <div className="kv">
         <div className="box">
-          <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>FRISK® Score <span style={{ fontSize: 10 }}>(1–10, lower = higher risk)</span></div>
+          <div className="muted" style={{ fontSize: 11, marginBottom: 4, display: "flex", alignItems: "center" }}>
+            FRISK® Score
+            <InfoTip text="Proprietary score (1–10) from CreditRiskMonitor. Scores of 1–3 signal high bankruptcy risk within 12 months; 8–10 signal low risk. Derived from financial ratios, credit agency ratings, and crowdsourced analyst sentiment. 96% accuracy in predicting public company bankruptcy." width={240} />
+            <span style={{ fontSize: 10, marginLeft: 6 }}>(1–10, lower = higher risk)</span>
+          </div>
           <div style={{ fontSize: 28, fontWeight: 900, color: friskColor(cr.friskScore), letterSpacing: "-.03em" }}>{cr.friskScore}</div>
           <div className="progress" style={{ marginTop: 6, height: 6 }}>
             <div className="progress-fill" style={{ width: `${friskBarWidth}%`, background: friskColor(cr.friskScore) }} />
           </div>
         </div>
         <div className="box">
-          <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>Insolvency Probability <span style={{ fontSize: 10 }}>(12-month)</span></div>
+          <div className="muted" style={{ fontSize: 11, marginBottom: 4, display: "flex", alignItems: "center" }}>
+            Insolvency Probability
+            <InfoTip text="Statistical likelihood (0–100%) that this company becomes insolvent within 12 months. Derived from financial statement analysis, payment behaviour, and credit bureau data. Above 10% warrants immediate review." width={230} />
+            <span style={{ fontSize: 10, marginLeft: 6 }}>(12-month)</span>
+          </div>
           <div style={{ fontSize: 28, fontWeight: 900, color: cr.insolvencyProbability > 0.1 ? "var(--risk)" : cr.insolvencyProbability > 0.05 ? "var(--warn)" : "var(--ok)", letterSpacing: "-.03em" }}>
             {insolvencyPct}%
           </div>

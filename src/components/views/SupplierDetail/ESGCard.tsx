@@ -2,6 +2,8 @@
 
 import { Supplier } from "@/types";
 import { Badge } from "@/components/ui/Badge";
+import { InfoTip } from "@/components/ui/InfoTip";
+import { useApp } from "@/context/AppContext";
 
 interface ESGCardProps {
   supplier: Supplier;
@@ -36,7 +38,21 @@ function ScoreBar({ value, color }: { value: number; color: string }) {
   );
 }
 
+const COMPLIANCE_TIPS: Record<string, string> = {
+  CSDDD: "EU Corporate Sustainability Due Diligence Directive — requires large companies to identify, prevent, and address adverse human rights and environmental impacts across their supply chains. Full enforcement from 2026.",
+  LkSG: "German Supply Chain Due Diligence Act (Lieferkettensorgfaltspflichtengesetz) — requires companies with 1,000+ employees in Germany to conduct due diligence on human rights and environmental risks in their global supply chains.",
+  EUDR: "EU Deforestation Regulation — prohibits products linked to deforestation or forest degradation from EU markets. Affects timber, palm oil, soy, cocoa, beef, coffee, and rubber supply chains.",
+  CSRD: "EU Corporate Sustainability Reporting Directive — requires large companies to report on climate risk, supply chain impacts, and social factors using standardised European Sustainability Reporting Standards (ESRS).",
+};
+
+const US_COMPLIANCE_TIPS: Record<string, string> = {
+  UFLPA: "Uyghur Forced Labor Prevention Act — US law (2022) that presumes goods with Xinjiang-region supply chain connections are made with forced labor. Non-compliant shipments are detained by CBP at US ports.",
+  "SEC Scope 3": "SEC Climate Disclosure Rule — requires public companies to report Scope 3 supply chain emissions. In Progress = supplier has begun measuring but not yet reported.",
+  "Conflict Minerals": "Dodd-Frank Section 1502 — requires US public companies to disclose use of conflict minerals (tin, tantalum, tungsten, gold) sourced from the DRC or adjoining countries.",
+};
+
 export function ESGCard({ supplier }: ESGCardProps) {
+  const { clientMode } = useApp();
   const { esg } = supplier;
   if (!esg) return null;
 
@@ -79,17 +95,31 @@ export function ESGCard({ supplier }: ESGCardProps) {
         ))}
       </div>
 
-      {/* Regulatory compliance */}
+      {/* Regulatory compliance — EU or US depending on clientMode */}
       <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Regulatory Compliance</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 12 }}>
-        {[
-          { label: "CSDDD", value: esg.csdddStatus },
-          { label: "LkSG", value: esg.lksgStatus },
-          { label: "EUDR", value: esg.eudrCompliant },
-          { label: "CSRD", value: esg.csrdStatus },
-        ].map((item) => (
+        {(clientMode === "wb"
+          ? ([
+              { label: "CSDDD", value: esg.csdddStatus as ComplianceValue },
+              { label: "LkSG",  value: esg.lksgStatus as ComplianceValue },
+              { label: "EUDR",  value: esg.eudrCompliant as ComplianceValue },
+              { label: "CSRD",  value: esg.csrdStatus as ComplianceValue },
+            ])
+          : ([
+              { label: "UFLPA",             value: (esg.uflpaStatus ?? "N/A") as ComplianceValue },
+              { label: "SEC Scope 3",       value: (esg.scope3Status ?? "N/A") as ComplianceValue },
+              { label: "Conflict Minerals", value: (esg.conflictMineralsStatus ?? "N/A") as ComplianceValue },
+              { label: "CSRD",              value: "N/A" as ComplianceValue },
+            ])
+        ).map((item) => (
           <div key={item.label} className="box" style={{ textAlign: "center" }}>
-            <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6 }}>{item.label}</div>
+            <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {item.label}
+              <InfoTip
+                text={(clientMode === "wb" ? COMPLIANCE_TIPS : US_COMPLIANCE_TIPS)[item.label] ?? ""}
+                width={240}
+              />
+            </div>
             <Badge variant={complianceVariant(item.value as ComplianceValue)} style={{ fontSize: 10, padding: "2px 8px" }}>
               {complianceLabel(item.value as ComplianceValue)}
             </Badge>
