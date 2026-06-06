@@ -305,7 +305,7 @@ export function AIChat() {
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
         </svg>
-        <span>AI</span>
+        <span>Vero</span>
       </button>
 
       {open && (
@@ -313,7 +313,7 @@ export function AIChat() {
           {/* Header */}
           <div className="ai-chat-header">
             <div>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>Chain Verity AI</div>
+              <div style={{ fontWeight: 700, fontSize: 14 }}>Vero <span style={{ fontWeight: 400, opacity: 0.6 }}>· AI Agent</span></div>
               <div style={{ fontSize: 11, opacity: 0.7 }}>Expert supply chain analyst · full portfolio context</div>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
