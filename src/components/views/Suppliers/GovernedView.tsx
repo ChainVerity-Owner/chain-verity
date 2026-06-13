@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Sparkline } from "@/components/ui/Charts";
 import { riskStateClass, riskStateLabel } from "@/lib/utils";
 import { ROLE_PERMS } from "@/lib/roles";
-import { topDrivers } from "@/lib/analytics";
+import { topDrivers, calcDPS } from "@/lib/analytics";
 
 const COUNTRY_RISK: Record<string, { tier: "Low" | "Medium" | "High"; label: string }> = {
   DE: { tier: "Low",    label: "🟢 DE" },
@@ -16,6 +16,11 @@ const COUNTRY_RISK: Record<string, { tier: "Low" | "Medium" | "High"; label: str
   IT: { tier: "Medium", label: "🟡 IT" },
   US: { tier: "Low",    label: "🟢 US" },
   GB: { tier: "Low",    label: "🟢 GB" },
+  CN: { tier: "High",   label: "🔴 CN" },
+  TW: { tier: "High",   label: "🔴 TW" },
+  SG: { tier: "Medium", label: "🟡 SG" },
+  VN: { tier: "Medium", label: "🟡 VN" },
+  MX: { tier: "Low",    label: "🟢 MX" },
 };
 
 interface CompareModalProps {
@@ -25,6 +30,7 @@ interface CompareModalProps {
 
 function CompareModal({ ids, onClose }: CompareModalProps) {
   const suppliers = useSuppliers();
+  const { currency } = useApp();
   const pair = ids.map((id) => suppliers.find((s) => s.id === id)).filter(Boolean) as ReturnType<typeof useSuppliers>;
   if (pair.length < 2) return null;
   const [a, b] = pair;
@@ -33,10 +39,11 @@ function CompareModal({ ids, onClose }: CompareModalProps) {
 
   const rows: { label: string; va: string; vb: string; highlight?: boolean }[] = [
     { label: "Risk Score",         va: String(a.risk ?? "—"),                    vb: String(b.risk ?? "—"),                    highlight: true },
+    { label: "DPS",                va: `${calcDPS(a)}%`,                          vb: `${calcDPS(b)}%` },
     { label: "Tier",               va: `Tier ${a.tier ?? "—"}`,                  vb: `Tier ${b.tier ?? "—"}` },
     { label: "Category",           va: a.category ?? "—",                         vb: b.category ?? "—" },
-    { label: "Annual Spend",       va: a.spend != null ? `£${a.spend}M` : "—",   vb: b.spend != null ? `£${b.spend}M` : "—" },
-    { label: "Exposure at Risk",   va: a.exposure != null ? `£${a.exposure}M` : "—", vb: b.exposure != null ? `£${b.exposure}M` : "—" },
+    { label: "Annual Spend",       va: a.spend != null ? `${currency}${a.spend}M` : "—",   vb: b.spend != null ? `${currency}${b.spend}M` : "—" },
+    { label: "Exposure at Risk",   va: a.exposure != null ? `${currency}${a.exposure}M` : "—", vb: b.exposure != null ? `${currency}${b.exposure}M` : "—" },
     { label: "On-Time %",          va: a.onTime != null ? `${a.onTime}%` : "—",  vb: b.onTime != null ? `${b.onTime}%` : "—" },
     { label: "Quality PPM",        va: String(a.qualityPPM ?? "—"),              vb: String(b.qualityPPM ?? "—") },
     { label: "Current Ratio",      va: a.ratios ? a.ratios.currentRatio.toFixed(2) : "—",   vb: b.ratios ? b.ratios.currentRatio.toFixed(2) : "—" },
@@ -127,7 +134,7 @@ function CompareModal({ ids, onClose }: CompareModalProps) {
 }
 
 export function GovernedView() {
-  const { setRoute, archiveSupplier, unarchiveSupplier, deleteSupplier, archivedIds, customSuppliers, role, riskThresholds } = useApp();
+  const { setRoute, archiveSupplier, unarchiveSupplier, deleteSupplier, archivedIds, customSuppliers, role, riskThresholds, currency } = useApp();
   const canEdit = ROLE_PERMS.canEditSuppliers(role);
   const [showArchived, setShowArchived] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
@@ -179,6 +186,9 @@ export function GovernedView() {
                 <th>Tier</th>
                 <th>Category</th>
                 <th>Country Risk</th>
+                <th>Spend</th>
+                <th>Exposure</th>
+                <th>DPS</th>
                 <th>Risk Score (12m)</th>
                 <th>Risk Drivers</th>
                 <th>Risk State</th>
@@ -194,6 +204,8 @@ export function GovernedView() {
                 const riskColor = (s.risk ?? 0) >= 65 ? "#dc2626" : (s.risk ?? 0) >= 45 ? "#d97706" : "#16a34a";
                 const isCompared = compareIds.includes(s.id);
                 const drivers = topDrivers(s);
+                const dps = calcDPS(s);
+                const dpsColor = dps >= 55 ? "#dc2626" : dps >= 35 ? "#d97706" : "#16a34a";
 
                 // Threshold breach detection
                 const breaches: string[] = [];
@@ -236,12 +248,23 @@ export function GovernedView() {
                       {cr ? (
                         <span style={{
                           fontSize: 11, fontWeight: 600, padding: "2px 7px", borderRadius: 5,
-                          background: cr.tier === "Medium" ? "rgba(217,119,6,.1)" : "rgba(22,163,74,.1)",
-                          color: cr.tier === "Medium" ? "var(--warn)" : "var(--ok)",
+                          background: cr.tier === "High" ? "rgba(220,38,38,.1)" : cr.tier === "Medium" ? "rgba(217,119,6,.1)" : "rgba(22,163,74,.1)",
+                          color: cr.tier === "High" ? "var(--risk)" : cr.tier === "Medium" ? "var(--warn)" : "var(--ok)",
                         }}>
                           {cr.label} · {cr.tier}
                         </span>
                       ) : <span className="muted">—</span>}
+                    </td>
+                    <td style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>
+                      {s.spend != null ? `${currency}${s.spend}M` : <span className="muted">—</span>}
+                    </td>
+                    <td style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>
+                      {s.exposure != null ? `${currency}${s.exposure}M` : <span className="muted">—</span>}
+                    </td>
+                    <td>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: dpsColor }} title="Disruption Probability Score">
+                        {dps}%
+                      </span>
                     </td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
