@@ -303,6 +303,33 @@ export function SupplierDetail() {
 
   const rsCls = riskStateClass(s.riskState, s.risk) as any;
 
+  // Resolve financial data source for this supplier
+  const financialSource = (() => {
+    if (s.ticker) {
+      const exchange =
+        s.ticker.endsWith(".AS") ? "Euronext Amsterdam" :
+        s.ticker.endsWith(".SW") ? "SIX Swiss Exchange" :
+        s.countryCode === "SG" ? "NASDAQ" :
+        "SEC EDGAR";
+      return { icon: "📋", label: exchange, detail: `Ticker: ${s.ticker}`, confidence: "High" as const };
+    }
+    const REGISTRY: Record<string, { icon: string; label: string; detail: string }> = {
+      DE: { icon: "🏛", label: "Bundesanzeiger", detail: "German Commercial Register" },
+      IT: { icon: "🏛", label: "Infocamere",     detail: "Italian Chamber of Commerce (CCIAA)" },
+      NL: { icon: "🏛", label: "KVK",            detail: "Dutch Chamber of Commerce" },
+      DK: { icon: "🏛", label: "Erhvervsstyrelsen", detail: "Danish Business Authority" },
+      CH: { icon: "🏛", label: "Zefix",          detail: "Swiss Commercial Register" },
+      GB: { icon: "🏛", label: "Companies House", detail: "UK Companies House" },
+      CN: { icon: "📊", label: "D&B Estimate",   detail: "D&B aggregated from SAIC filing — private company" },
+      SG: { icon: "🏛", label: "ACRA",           detail: "Accounting & Corporate Regulatory Authority (SG)" },
+      US: { icon: "📊", label: "Supplier-Submitted", detail: "Financials provided directly by supplier" },
+    };
+    const reg = s.countryCode ? REGISTRY[s.countryCode] : undefined;
+    return reg
+      ? { ...reg, confidence: s.countryCode === "CN" ? "Medium" as const : "High" as const }
+      : { icon: "📊", label: "Supplier-Submitted", detail: "Financials provided directly by supplier", confidence: "Medium" as const };
+  })();
+
   type Tab = "overview" | "financial" | "esg" | "operations" | "intelligence";
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [chartTab, setChartTab] = useState(0);
@@ -662,7 +689,22 @@ export function SupplierDetail() {
           {/* Ratios */}
           {s.ratios && (
             <div className="card">
-              <h2>Financial Ratios (Latest Filing)</h2>
+              <div className="row" style={{ marginBottom: 8 }}>
+                <h2 style={{ margin: 0 }}>Financial Ratios (Latest Filing)</h2>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>
+                    {financialSource.icon} {financialSource.label}
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
+                    background: financialSource.confidence === "High" ? "rgba(22,163,74,.1)" : "rgba(217,119,6,.1)",
+                    color: financialSource.confidence === "High" ? "var(--ok)" : "var(--warn)",
+                  }}>
+                    {financialSource.confidence}
+                  </span>
+                </div>
+              </div>
+              <div className="muted" style={{ fontSize: 11, marginBottom: 12 }}>{financialSource.detail}</div>
               <div className="kv">
                 <div className="box">
                   <div style={{ display: "flex", alignItems: "center" }}>
@@ -737,6 +779,18 @@ export function SupplierDetail() {
                   ))}
                 </div>
                 {charts[active].el}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--line)" }}>
+                  <span className="muted" style={{ fontSize: 11 }}>Source:</span>
+                  <span style={{ fontSize: 11, color: "var(--fg-muted)" }}>{financialSource.icon} {financialSource.label}</span>
+                  <span className="muted" style={{ fontSize: 11 }}>· {financialSource.detail}</span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 4, marginLeft: "auto",
+                    background: financialSource.confidence === "High" ? "rgba(22,163,74,.1)" : "rgba(217,119,6,.1)",
+                    color: financialSource.confidence === "High" ? "var(--ok)" : "var(--warn)",
+                  }}>
+                    {financialSource.confidence} confidence
+                  </span>
+                </div>
               </div>
             );
           })()}
