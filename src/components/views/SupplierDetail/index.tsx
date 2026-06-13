@@ -305,9 +305,10 @@ export function SupplierDetail() {
 
   type Tab = "overview" | "financial" | "esg" | "operations" | "intelligence";
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [chartTab, setChartTab] = useState(0);
 
-  // Reset tab when supplier changes
-  useEffect(() => { setActiveTab("overview"); }, [s.id]);
+  // Reset tabs when supplier changes
+  useEffect(() => { setActiveTab("overview"); setChartTab(0); }, [s.id]);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "overview", label: "Overview" },
@@ -704,11 +705,41 @@ export function SupplierDetail() {
           )}
 
           {/* Charts */}
-          <LineChart series={buildCR(s)} label="Current Ratio Trend" formatY={(v) => v.toFixed(2)} higherIsBetter />
-          <LineChart series={buildDE(s)} label="Debt-to-Equity Trend" formatY={(v) => v.toFixed(2)} higherIsBetter={false} />
-          <LineChart series={buildPM(s)} label="Net Profit Margin Trend" formatY={(v) => v.toFixed(1) + "%"} higherIsBetter />
-          <LineChart series={buildOCF(s)} label="Operating Cash Flow Trend" formatY={(v) => "£" + v.toFixed(1) + "M"} higherIsBetter />
-          <LineChart series={buildEB(s)} label="EBITDA Trend" formatY={(v) => "£" + v.toFixed(1) + "M"} higherIsBetter />
+          {/* Financial trend charts — tabbed */}
+          {(() => {
+            const charts = [
+              { label: "Current Ratio",  el: <LineChart series={buildCR(s)}  label="Current Ratio Trend"          formatY={(v) => v.toFixed(2)}                    higherIsBetter /> },
+              { label: "Debt / Equity",  el: <LineChart series={buildDE(s)}  label="Debt-to-Equity Trend"         formatY={(v) => v.toFixed(2)}                    higherIsBetter={false} /> },
+              { label: "Net Margin",     el: <LineChart series={buildPM(s)}  label="Net Profit Margin Trend"      formatY={(v) => v.toFixed(1) + "%"}              higherIsBetter /> },
+              { label: "Cash Flow",      el: <LineChart series={buildOCF(s)} label="Operating Cash Flow Trend"    formatY={(v) => currency + v.toFixed(1) + "M"}   higherIsBetter /> },
+              { label: "EBITDA",         el: <LineChart series={buildEB(s)}  label="EBITDA Trend"                 formatY={(v) => currency + v.toFixed(1) + "M"}   higherIsBetter /> },
+            ];
+            const active = Math.min(chartTab, charts.length - 1);
+            return (
+              <div className="card" style={{ paddingTop: 0 }}>
+                <div style={{ display: "flex", borderBottom: "1px solid var(--line)", marginBottom: 16, overflowX: "auto" }}>
+                  {charts.map((c, i) => (
+                    <button
+                      key={c.label}
+                      onClick={() => setChartTab(i)}
+                      style={{
+                        padding: "10px 16px", fontSize: 12,
+                        fontWeight: active === i ? 700 : 500,
+                        background: "none", border: "none",
+                        borderBottom: active === i ? "2px solid var(--accent)" : "2px solid transparent",
+                        marginBottom: -1, cursor: "pointer",
+                        color: active === i ? "var(--accent)" : "var(--muted)",
+                        whiteSpace: "nowrap", transition: "color .15s",
+                      }}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+                {charts[active].el}
+              </div>
+            );
+          })()}
         </div>
       )}
 
