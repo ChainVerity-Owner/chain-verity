@@ -156,7 +156,7 @@ function SupplierNotes({
 
 
 export function SupplierDetail() {
-  const { params, setSimulatedEscalation, simulatedEscalation, supplierNotes, addSupplierNote, deleteSupplierNote, role, currency } = useApp();
+  const { params, setSimulatedEscalation, simulatedEscalation, supplierNotes, addSupplierNote, deleteSupplierNote, role, currency, clientMode, platformProductLines } = useApp();
   const allSuppliers = useSuppliers();
   const s = allSuppliers.find((x) => x.id === params.id) || allSuppliers[0];
   const [obsNote, setObsNote] = useState({ text: "Risk cannot be closed manually. All approvals determine closure.", color: "var(--muted)" });
@@ -399,6 +399,21 @@ export function SupplierDetail() {
                         </span>
                       ) : null;
                     })()}
+                    {(() => {
+                      const TARIFF_MAP: Record<string, { level: "High" | "Medium"; detail: string; rate: string }> = {
+                        CN: { level: "High", detail: "Section 301 + additional tariffs apply to electronic components, precision assemblies, and manufactured goods. Increases landed cost and compresses supplier margins — evaluate total cost of ownership and US-based alternative sourcing.", rate: "Up to 145% effective rate" },
+                        SG: { level: "Medium", detail: "Singapore-incorporated supplier may carry China-content tariff exposure depending on manufacturing origin. PCB assemblies and electronics sourced from Chinese facilities may be subject to Section 301 duties.", rate: "0–25% potential" },
+                      };
+                      const tariff = s.countryCode ? TARIFF_MAP[s.countryCode] : null;
+                      return tariff && clientMode === "generic" ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <Badge variant={tariff.level === "High" ? "risk" : "warn"}>
+                            🏛 Tariff Risk: <b>{tariff.level}</b>
+                          </Badge>
+                          <InfoTip text={`${tariff.detail} Current rate: ${tariff.rate}.`} width={280} />
+                        </span>
+                      ) : null;
+                    })()}
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                       <Badge variant={dpsVariant}>
                         Disruption Risk: <b>{dps}%</b>
@@ -561,6 +576,53 @@ export function SupplierDetail() {
               </div>
             </div>
           )}
+
+          {/* BOM — sole-sourced critical parts from this supplier */}
+          {(() => {
+            const criticalParts = platformProductLines.flatMap((pl) =>
+              pl.bomItems
+                .filter((b) => b.supplierId === s.id && b.soloSourced)
+                .map((b) => ({ ...b, productLine: pl.name }))
+            );
+            if (criticalParts.length === 0) return null;
+            const annualRisk = criticalParts.reduce((sum, b) => sum + b.unitCost * b.quantity * 1000, 0);
+            return (
+              <div className="card" style={{ borderLeft: "3px solid var(--risk)" }}>
+                <div className="row" style={{ marginBottom: 8 }}>
+                  <div>
+                    <h2 style={{ margin: 0 }}>⚠ Sole-Sourced Critical Parts</h2>
+                    <div className="card-sub">No qualified alternative supplier exists for these components.</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "var(--risk)" }}>${(annualRisk / 1e6).toFixed(1)}M</div>
+                    <div className="muted" style={{ fontSize: 11 }}>est. annual parts value</div>
+                  </div>
+                </div>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>Part #</th><th>Part Name</th><th>Product Line</th><th>Lead Time</th><th>Unit Cost</th><th>Qty/Unit</th></tr>
+                    </thead>
+                    <tbody>
+                      {criticalParts.map((b) => (
+                        <tr key={b.partNumber}>
+                          <td className="mono" style={{ fontSize: 11 }}>{b.partNumber}</td>
+                          <td><b>{b.partName}</b></td>
+                          <td style={{ fontSize: 12, color: "var(--muted)" }}>{b.productLine}</td>
+                          <td style={{ color: b.leadTimeDays > 14 ? "var(--warn)" : "inherit", fontWeight: b.leadTimeDays > 14 ? 700 : 400 }}>
+                            {b.leadTimeDays}d {b.leadTimeDays > 14 ? "⚠" : ""}
+                          </td>
+                          <td>${b.unitCost}</td>
+                          <td>{b.quantity}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="note">Each sole-sourced part is a single point of failure. A disruption to this supplier immediately halts production of the affected lines with no alternative. Qualify a secondary source to eliminate this exposure.</div>
+              </div>
+            );
+          })()}
 
           {/* Timeline */}
           {s.timeline && s.timeline.length > 0 && (

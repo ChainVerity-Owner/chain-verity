@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { MiniDonut, LegendDot, HeatBar, Sparkline, TrendPill } from "@/components/ui/Charts";
 
 export function Analytics() {
-  const { simulatedEscalation, platformBenchmarks, currency } = useApp();
+  const { simulatedEscalation, platformBenchmarks, currency, clientMode } = useApp();
   const suppliersAll = useSuppliers();
 
   function trendVariant(t: string) {
@@ -269,6 +269,86 @@ export function Analytics() {
               })}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Early Detection ROI */}
+      <div className="card" style={{ borderLeft: "4px solid var(--ok)" }}>
+        <div className="row" style={{ marginBottom: 14, alignItems: "flex-start" }}>
+          <div>
+            <h2 style={{ margin: 0 }}>Early Detection — Quantified Value</h2>
+            <div className="card-sub">
+              {clientMode === "generic"
+                ? "Platform value created through proactive risk identification in this portfolio"
+                : "Estimated financial impact avoided through early risk detection and managed intervention"}
+            </div>
+          </div>
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "var(--ok)" }}>{currency}{clientMode === "generic" ? "8.5" : "6.2"}M</div>
+            <div className="muted" style={{ fontSize: 11 }}>total net value created</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {(clientMode === "generic" ? [
+            {
+              event: "Flex Ltd. FRISK score decline (6 → 4)",
+              window: "45-day early warning",
+              action: "Secondary source qualification initiated; 30-day safety stock built for CB-3100 and PM-14",
+              exposure: `${currency}6.8M`,
+              cost: `${currency}0.3M`,
+              net: `${currency}6.5M`,
+            },
+            {
+              event: "Zhonghe Precision UFLPA non-compliance flagged",
+              window: "Before production line impact",
+              action: "Trade compliance counsel engaged; alternative PCB sourcing underway; 60-day buffer established",
+              exposure: `${currency}4.2M`,
+              cost: `${currency}0.2M`,
+              net: `${currency}4.0M`,
+            },
+          ] : [
+            {
+              event: "Sinter Metall current ratio decline (1.6 → 0.8)",
+              window: "62-day early warning",
+              action: "Renegotiation initiated; payment terms adjusted; secondary qualification started",
+              exposure: `${currency}8.4M`,
+              cost: `${currency}0.4M`,
+              net: `${currency}8.0M`,
+            },
+            {
+              event: "EBM-Papst CSDDD non-compliance identified",
+              window: "Before regulatory penalty",
+              action: "Compliance programme co-developed with supplier; audit scheduled",
+              exposure: `${currency}2.8M`,
+              cost: `${currency}0.2M`,
+              net: `${currency}2.6M`,
+            },
+          ]).map((row, i) => (
+            <div key={i} style={{ background: "rgba(22,163,74,.04)", border: "1px solid rgba(22,163,74,.15)", borderRadius: 10, padding: "12px 14px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3 }}>{row.event}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ok)", marginBottom: 4 }}>⏱ {row.window}</div>
+                  <div className="muted" style={{ fontSize: 12 }}>{row.action}</div>
+                </div>
+                <div style={{ display: "flex", gap: 14, flexShrink: 0, flexWrap: "wrap" }}>
+                  {[
+                    { label: "Exposure Mitigated", value: row.exposure, color: "var(--risk)" },
+                    { label: "Intervention Cost", value: row.cost, color: "var(--muted)" },
+                    { label: "Net Value Created", value: row.net, color: "var(--ok)" },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 15, fontWeight: 800, color }}>{value}</div>
+                      <div className="muted" style={{ fontSize: 10, marginTop: 1 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="note" style={{ marginTop: 10 }}>
+          Exposure mitigated = estimated disruption cost avoided through early action. Intervention cost = safety stock, alternative sourcing, and programme management. Net value = platform ROI for this portfolio.
         </div>
       </div>
     </div>

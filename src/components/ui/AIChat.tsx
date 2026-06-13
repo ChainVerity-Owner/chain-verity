@@ -142,8 +142,10 @@ function getSuggestedQuestions(
   params: Record<string, string>,
   suppliers: Supplier[],
   crisisRooms: { title: string; status: string }[],
-  events: { title: string; status: string }[]
+  events: { title: string; status: string }[],
+  clientMode: string
 ): string[] {
+  const isUS     = clientMode === "generic";
   const escalated  = suppliers.filter((s) => s.riskState === "ESCALATED");
   const highRisk   = suppliers.filter((s) => (s.risk ?? 0) >= 65);
   const openRooms  = crisisRooms.filter((r) => r.status === "Open");
@@ -151,7 +153,12 @@ function getSuggestedQuestions(
 
   if (route === "supplier" && params.id) {
     const s = suppliers.find((x) => x.id === params.id);
-    if (s) return [
+    if (s) return isUS ? [
+      `What is driving ${s.name}'s risk score of ${s.risk} and what should I do this week?`,
+      `What is the EBITDA impact if ${s.name} disrupts production for 4 weeks?`,
+      `Should I qualify a backup supplier for ${s.name}, and how long will it take?`,
+      `How does ${s.name}'s tariff exposure affect our total cost of ownership?`,
+    ] : [
       `What is driving ${s.name}'s risk score of ${s.risk}?`,
       `What actions should I take with ${s.name} this week?`,
       `Should I qualify a backup supplier for ${s.name}?`,
@@ -159,42 +166,72 @@ function getSuggestedQuestions(
     ];
   }
 
-  if (route === "crisis") return [
+  if (route === "crisis") return isUS ? [
+    openRooms[0] ? `Walk me through the financial exposure and recommended actions for ${openRooms[0].title}.` : `Which crisis is most likely to halt our production lines?`,
+    `What is the combined exposure across all open crisis rooms and which is most urgent?`,
+    `Which product lines are at risk if the Flex Ltd. crisis is not resolved by Week 44?`,
+    `What's the fastest path to resolving the Zhonghe UFLPA detention?`,
+  ] : [
     openRooms[0] ? `Walk me through the financial exposure for ${openRooms[0].title}.` : `Which crisis is most likely to affect production?`,
     `What is the priority order for actions across all open crisis rooms?`,
     `Which crisis room should I focus on first?`,
     `What is the total exposure across all open crisis rooms?`,
   ];
 
-  if (route === "events") return [
+  if (route === "events") return isUS ? [
+    activeEvts[0] ? `What should I do about "${activeEvts[0].title}" — what are the immediate procurement actions?` : `Which events require immediate action?`,
+    `How do the US–China tariff escalations affect my sourcing strategy?`,
+    `Which of my suppliers are most exposed to the ILA port slowdown?`,
+    `Rank the active events by financial impact to Meridian Industrial Group.`,
+  ] : [
     activeEvts[0] ? `What should I do about "${activeEvts[0].title}"?` : `Which events require immediate action?`,
     `How do the active disruption events affect my supply chain?`,
     `Rank the active events by financial impact.`,
     `Which suppliers are most exposed to current disruptions?`,
   ];
 
-  if (route === "esg") return [
+  if (route === "esg") return isUS ? [
+    `Which of my suppliers are at highest UFLPA enforcement risk?`,
+    `What evidence do I need to rebut a UFLPA detention for Zhonghe Precision?`,
+    `Which suppliers have outstanding Conflict Minerals compliance gaps?`,
+    `What ESG actions should procurement prioritise this quarter to reduce regulatory risk?`,
+  ] : [
     `Which suppliers have the highest ESG risk?`,
     `Which suppliers are most exposed to UFLPA enforcement?`,
     `Summarise my regulatory compliance gaps.`,
     `What ESG actions should I prioritise this quarter?`,
   ];
 
-  if (route === "analytics") return [
+  if (route === "analytics") return isUS ? [
+    `Which supplier has the most deteriorating financial trend and what's the projected impact?`,
+    `How much of my portfolio spend is exposed to Section 301 tariffs — and what's the annual cost?`,
+    `What sole-sourced components represent the biggest production risk across my product lines?`,
+    `Compare Meridian's portfolio risk against the industrial automation industry benchmark.`,
+  ] : [
     `Which supplier has the most deteriorating financial trend?`,
     `Compare my portfolio risk against the industry benchmark.`,
     `Which suppliers are improving and which are worsening?`,
     `What is the worst-case disruption scenario for my portfolio?`,
   ];
 
-  if (route === "contracts") return [
+  if (route === "contracts") return isUS ? [
+    `The Haynes International alloy contract expires in 32 days — what leverage do I have in renegotiation?`,
+    `Which of my contracts should have force majeure and tariff pass-through clauses added?`,
+    `Draft talking points for renegotiating the Flex Ltd. EMS framework agreement.`,
+    `Which contract renewals carry the highest financial risk if delayed?`,
+  ] : [
     `Which contracts are most urgent to renegotiate?`,
     `Which contract renewals carry the highest financial risk?`,
     `Draft talking points for my next supplier negotiation.`,
     `Which contracts should have performance trigger clauses added?`,
   ];
 
-  if (route === "recovery") return [
+  if (route === "recovery") return isUS ? [
+    `Which of my product lines is most exposed to a single-source failure right now?`,
+    `What safety stock levels should I set for Flex Ltd. and Zhonghe given current lead times?`,
+    `If Zhonghe Precision is fully disqualified, how long before the ProControl 2000 line stops?`,
+    `Which sole-sourced components should I prioritise for alternative supplier qualification?`,
+  ] : [
     `Which supplier has the shortest time-to-survive?`,
     `Where are the single-source components in my portfolio?`,
     `What safety stock levels should I set for high-risk suppliers?`,
@@ -203,7 +240,12 @@ function getSuggestedQuestions(
 
   // Dashboard default — prioritise most urgent scenario
   const topRisk = escalated[0] ?? highRisk[0];
-  return [
+  return isUS ? [
+    topRisk ? `What should I do about ${topRisk.name} right now and what's the financial impact?` : `Which supplier needs my attention most urgently?`,
+    `How much of my supply chain spend is exposed to Section 301 tariffs — and which suppliers are affected?`,
+    `Which sole-sourced components put my ProControl 2000 and FlexDrive production lines at risk?`,
+    `If Flex Ltd. drops to a FRISK score of 3, what is the earnings impact on Meridian for the next quarter?`,
+  ] : [
     topRisk ? `What should I do about ${topRisk.name} right now?` : `Which supplier needs my attention most urgently?`,
     `Summarise my top 3 supply chain risks this week.`,
     `What actions should procurement take today?`,
@@ -214,7 +256,7 @@ function getSuggestedQuestions(
 // ── Component ─────────────────────────────────────────────────────────────────
 export function AIChat() {
   const {
-    route, params, role, currency,
+    route, params, role, currency, clientMode,
     platformCrisisRooms, platformEvents, platformContracts, platformAlerts,
   } = useApp();
   const suppliers = useSuppliers();
@@ -296,7 +338,7 @@ export function AIChat() {
     setStreaming(false);
   }
 
-  const suggested = getSuggestedQuestions(route, params, suppliers, platformCrisisRooms, platformEvents);
+  const suggested = getSuggestedQuestions(route, params, suppliers, platformCrisisRooms, platformEvents, clientMode);
   const openRoomCount = platformCrisisRooms.filter((r) => r.status === "Open").length;
 
   return (

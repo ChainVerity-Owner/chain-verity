@@ -17,13 +17,15 @@ function riskPillClass(risk: number) {
 
 // ── CFO Dashboard ─────────────────────────────────────────────────────────────
 function CFODashboard() {
-  const { setRoute, currency, platformContracts, platformAlerts } = useApp();
+  const { setRoute, currency, platformContracts, platformAlerts, clientMode } = useApp();
   const suppliers = useSuppliers();
 
   const totalExposure = suppliers.reduce((sum, s) => sum + (s.exposure ?? 0), 0);
   const highRisk = suppliers.filter((s) => (s.risk ?? 0) >= 65);
   const underObservation = suppliers.filter((s) => s.observation);
   const contractsAtRisk = platformContracts.filter((c) => ["Under Renegotiation", "Pending Renewal"].includes(c.status));
+  const tariffExposed = suppliers.filter((s) => s.countryCode && ["CN", "SG", "TW", "VN"].includes(s.countryCode));
+  const tariffAnnualImpact = tariffExposed.reduce((sum, s) => sum + (s.spend ?? 0) * (s.countryCode === "CN" ? 0.25 : 0.08), 0);
   const contractValueAtRisk = contractsAtRisk.reduce((sum, c) => {
     const v = parseFloat(c.value.replace(/[^0-9.]/g, ""));
     return sum + (isNaN(v) ? 0 : v);
@@ -71,6 +73,9 @@ function CFODashboard() {
                 { label: "High-risk suppliers", value: String(highRisk.length), color: "#fca5a5" },
                 { label: "Contracts at risk", value: String(contractsAtRisk.length), color: "#fde68a" },
                 { label: "Under observation", value: String(underObservation.length), color: "#c4b5fd" },
+                ...(clientMode === "generic" && tariffExposed.length > 0
+                  ? [{ label: "Tariff-exposed", value: String(tariffExposed.length), color: "#fb923c" }]
+                  : []),
               ].map(s => (
                 <div key={s.label} style={{ textAlign: "center" }}>
                   <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: s.color }}>{s.value}</div>
@@ -114,6 +119,43 @@ function CFODashboard() {
           sparkData={avgRiskTrend}
         />
       </div>
+
+      {/* Tariff Exposure Banner — US mode only */}
+      {clientMode === "generic" && tariffExposed.length > 0 && (
+        <div className="card" style={{ borderLeft: "4px solid #f97316", background: "rgba(249,115,22,.04)" }}>
+          <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 800, fontSize: 14, color: "#f97316", marginBottom: 4 }}>
+                🏛 Tariff Exposure — {tariffExposed.length} Supplier{tariffExposed.length > 1 ? "s" : ""} Affected
+              </div>
+              <div className="muted" style={{ fontSize: 12, marginBottom: 10 }}>
+                Section 301 and additional US tariffs apply to goods sourced from these suppliers. Estimated annual incremental cost: <b style={{ color: "#f97316" }}>{currency}{tariffAnnualImpact.toFixed(1)}M</b>. Review sourcing strategy and contract cost-pass-through clauses.
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {tariffExposed.map((s) => (
+                  <div
+                    key={s.id}
+                    onClick={() => setRoute("supplier", { id: s.id })}
+                    style={{ cursor: "pointer", background: "var(--surface)", border: "1px solid rgba(249,115,22,.3)", borderRadius: 8, padding: "6px 12px", fontSize: 12 }}
+                  >
+                    <b>{s.name}</b>
+                    <span className="muted" style={{ marginLeft: 6 }}>
+                      {s.countryCode === "CN" ? "High · Sec. 301" : "Medium · Monitor"}
+                    </span>
+                    <span style={{ marginLeft: 8, color: "#f97316", fontWeight: 700 }}>
+                      {currency}{(s.spend ?? 0).toFixed(1)}M spend
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ textAlign: "right", flexShrink: 0 }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "#f97316" }}>{currency}{tariffAnnualImpact.toFixed(1)}M</div>
+              <div className="muted" style={{ fontSize: 11 }}>est. annual tariff cost</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid-32">
         {/* Financial Risk Priority */}
@@ -423,13 +465,14 @@ function ProcurementDashboard() {
 
 // ── Analyst Dashboard ─────────────────────────────────────────────────────────
 function AnalystDashboard() {
-  const { setRoute, currency, platformAlerts } = useApp();
+  const { setRoute, currency, platformAlerts, clientMode } = useApp();
   const suppliers = useSuppliers();
 
   const avgRisk = suppliers.length
     ? Math.round(suppliers.reduce((s, x) => s + (x.risk ?? 0), 0) / suppliers.length)
     : 0;
   const csdddNonCompliant = suppliers.filter((s) => s.esg && !["Compliant"].includes(String(s.esg.csdddStatus)));
+  const uflpaNonCompliant = suppliers.filter((s) => s.esg?.uflpaStatus && !["Compliant", "N/A"].includes(String(s.esg.uflpaStatus)));
   const highSpend = suppliers.filter((s) => (s.spend ?? 0) >= 10);
   const elevatedDPS = suppliers.filter((s) => (s.risk ?? 0) >= 50);
 
@@ -457,7 +500,9 @@ function AnalystDashboard() {
             </div>
             <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
               {[
-                { label: "CSDDD non-compliant", value: String(csdddNonCompliant.length), color: "#fca5a5" },
+                clientMode === "generic"
+                  ? { label: "UFLPA non-compliant", value: String(uflpaNonCompliant.length), color: "#fca5a5" }
+                  : { label: "CSDDD non-compliant", value: String(csdddNonCompliant.length), color: "#fca5a5" },
                 { label: "Elevated DPS (≥50)", value: String(elevatedDPS.length), color: "#fde68a" },
                 { label: "High-spend suppliers", value: String(highSpend.length), color: "#c4b5fd" },
               ].map(s => (
@@ -473,7 +518,11 @@ function AnalystDashboard() {
 
       <div className="grid-4">
         <KpiCardV2 label="Average Risk Score" value={String(avgRisk)} sub="Across all suppliers" accent={avgRisk >= 65 ? "var(--risk)" : avgRisk >= 45 ? "var(--warn)" : "var(--ok)"} trend={3} trendSuffix="" trendHigherIsBetter={false} sparkData={avgSparkData} />
-        <KpiCardV2 label="CSDDD Non-Compliant" value={String(csdddNonCompliant.length)} sub="Suppliers requiring action" accent="var(--risk)" icon="🌿" />
+        <KpiCardV2
+          label={clientMode === "generic" ? "UFLPA Non-Compliant" : "CSDDD Non-Compliant"}
+          value={clientMode === "generic" ? String(uflpaNonCompliant.length) : String(csdddNonCompliant.length)}
+          sub="Suppliers requiring action" accent="var(--risk)" icon="🌿"
+        />
         <KpiCardV2 label="High-Spend Suppliers" value={String(highSpend.length)} sub={`Annual spend ≥ ${currency}10M`} accent="var(--accent)" icon="💰" />
         <KpiCardV2 label="Elevated DPS" value={String(elevatedDPS.length)} sub="Risk score ≥ 50" accent="var(--warn)" trend={1} trendSuffix="" trendHigherIsBetter={false} />
       </div>
@@ -546,17 +595,25 @@ function AnalystDashboard() {
 
           <div className="divider" style={{ margin: "14px 0 10px" }} />
           <div style={{ fontWeight: 700, fontSize: 12, marginBottom: 8, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em" }}>
-            ESG CSDDD Status
+            {clientMode === "generic" ? "UFLPA Compliance Status" : "ESG CSDDD Status"}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {suppliers.filter((s) => s.esg).map((s) => (
-              <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                <span style={{ fontSize: 12 }}>{s.name}</span>
-                <Badge variant={s.esg!.csdddStatus === "Compliant" ? "ok" : s.esg!.csdddStatus === "Non-Compliant" ? "risk" : "warn"}>
-                  {s.esg!.csdddStatus}
-                </Badge>
-              </div>
-            ))}
+            {suppliers.filter((s) => s.esg).map((s) => {
+              const status = clientMode === "generic"
+                ? (s.esg!.uflpaStatus ?? "N/A")
+                : s.esg!.csdddStatus;
+              const variant = status === "Compliant" ? "ok" as const
+                : status === "Non-Compliant" ? "risk" as const
+                : status === "Under Review" ? "risk" as const
+                : status === "N/A" ? "muted-b" as const
+                : "warn" as const;
+              return (
+                <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ fontSize: 12 }}>{s.name}</span>
+                  <Badge variant={variant}>{status}</Badge>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
