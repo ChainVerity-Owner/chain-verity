@@ -69,6 +69,27 @@ interface WBResult {
   tradeOpenness: { value: number; year: string } | null;
 }
 
+interface EdgarData {
+  entityName: string;
+  cik: string;
+  filingDate: string | null;
+  filingForm: string;
+  ratios: {
+    currentRatio: number | null;
+    debtToEquity: number | null;
+    netProfitMargin: number | null;
+    operatingCashFlowM: number | null;
+    ebitdaM: number | null;
+  };
+  trends: {
+    currentRatio: { label: string; value: number }[];
+    debtToEquity: { label: string; value: number }[];
+    netProfitMargin: { label: string; value: number }[];
+    operatingCashFlow: { label: string; value: number }[];
+    ebitda: { label: string; value: number }[];
+  };
+}
+
 // ISO-2 country code lookup by supplier ID
 const SUPPLIER_COUNTRY: Record<string, string> = {
   sit: "IT", ebm: "DE", aal: "NL", gru: "DK",
@@ -183,6 +204,11 @@ export function SupplierDetail() {
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsNoKey, setNewsNoKey] = useState(false);
 
+  // EDGAR live financials state
+  const [edgarData, setEdgarData] = useState<EdgarData | null>(null);
+  const [edgarLoading, setEdgarLoading] = useState(false);
+  const isEdgarTicker = !!(s.ticker && !s.ticker.match(/\.(AS|SW|L|PA|MI|HK|TO)$/i));
+
   // Auto-fetch World Bank country risk on supplier change
   useEffect(() => {
     const code = s.countryCode;
@@ -210,6 +236,18 @@ export function SupplierDetail() {
       .catch(() => setNews([]))
       .finally(() => setNewsLoading(false));
   }, [s.id, s.name]);
+
+  // Auto-fetch EDGAR live financials for US-exchange listed suppliers
+  useEffect(() => {
+    setEdgarData(null);
+    if (!s.ticker || s.ticker.match(/\.(AS|SW|L|PA|MI|HK|TO)$/i)) return;
+    setEdgarLoading(true);
+    fetch(`/api/edgar?ticker=${encodeURIComponent(s.ticker)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: EdgarData | null) => setEdgarData(data))
+      .catch(() => setEdgarData(null))
+      .finally(() => setEdgarLoading(false));
+  }, [s.id, s.ticker]);
 
   const runSanctionsCheck = useCallback(async () => {
     setSanctionsLoading(true);
@@ -305,13 +343,22 @@ export function SupplierDetail() {
 
   // Resolve financial data source for this supplier
   const financialSource = (() => {
+    if (isEdgarTicker && edgarData) {
+      const date = edgarData.filingDate
+        ? new Date(edgarData.filingDate).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+        : "—";
+      return { icon: "📋", label: "SEC EDGAR", detail: `${edgarData.filingForm} as of ${date}`, confidence: "High" as const, live: true };
+    }
+    if (isEdgarTicker && edgarLoading) {
+      return { icon: "📋", label: "SEC EDGAR", detail: "Fetching live data…", confidence: "High" as const, live: false };
+    }
     if (s.ticker) {
       const exchange =
         s.ticker.endsWith(".AS") ? "Euronext Amsterdam" :
         s.ticker.endsWith(".SW") ? "SIX Swiss Exchange" :
         s.countryCode === "SG" ? "NASDAQ" :
         "SEC EDGAR";
-      return { icon: "📋", label: exchange, detail: `Ticker: ${s.ticker}`, confidence: "High" as const };
+      return { icon: "📋", label: exchange, detail: `Ticker: ${s.ticker}`, confidence: "High" as const, live: false };
     }
     const REGISTRY: Record<string, { icon: string; label: string; detail: string }> = {
       DE: { icon: "🏛", label: "Bundesanzeiger", detail: "German Commercial Register" },
@@ -326,9 +373,20 @@ export function SupplierDetail() {
     };
     const reg = s.countryCode ? REGISTRY[s.countryCode] : undefined;
     return reg
-      ? { ...reg, confidence: s.countryCode === "CN" ? "Medium" as const : "High" as const }
-      : { icon: "📊", label: "Supplier-Submitted", detail: "Financials provided directly by supplier", confidence: "Medium" as const };
+      ? { ...reg, confidence: s.countryCode === "CN" ? "Medium" as const : "High" as const, live: false }
+      : { icon: "📊", label: "Supplier-Submitted", detail: "Financials provided directly by supplier", confidence: "Medium" as const, live: false };
   })();
+
+  // Merge EDGAR ratios over demo data for display and charts
+  const liveR = edgarData?.ratios;
+  const displayRatios = {
+    currentRatio:    liveR?.currentRatio    ?? s.ratios?.currentRatio,
+    debtToEquity:    liveR?.debtToEquity    ?? s.ratios?.debtToEquity,
+    netProfitMargin: liveR?.netProfitMargin ?? s.ratios?.netProfitMargin,
+  };
+  const sLive = (displayRatios.currentRatio != null || displayRatios.debtToEquity != null)
+    ? { ...s, ratios: { currentRatio: displayRatios.currentRatio ?? 1, debtToEquity: displayRatios.debtToEquity ?? 0.5, netProfitMargin: displayRatios.netProfitMargin ?? 0.05 } }
+    : s;
 
   type Tab = "overview" | "financial" | "esg" | "operations" | "intelligence";
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -687,11 +745,17 @@ export function SupplierDetail() {
           <CreditRiskCard supplier={s} />
 
           {/* Ratios */}
-          {s.ratios && (
+          {(s.ratios || edgarData?.ratios || edgarLoading) && (
             <div className="card">
               <div className="row" style={{ marginBottom: 8 }}>
                 <h2 style={{ margin: 0 }}>Financial Ratios (Latest Filing)</h2>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {financialSource.live && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ok)" }}>● LIVE</span>
+                  )}
+                  {edgarLoading && !edgarData && (
+                    <span style={{ fontSize: 10, color: "var(--muted)" }}>⟳ fetching…</span>
+                  )}
                   <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>
                     {financialSource.icon} {financialSource.label}
                   </span>
@@ -705,38 +769,42 @@ export function SupplierDetail() {
                 </div>
               </div>
               <div className="muted" style={{ fontSize: 11, marginBottom: 12 }}>{financialSource.detail}</div>
-              <div className="kv">
-                <div className="box">
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    Debt / Equity
-                    <InfoTip text="Total debt divided by shareholders' equity. Measures financial leverage. Below 0.5 is conservative; above 1.5 indicates high leverage, increasing vulnerability to economic downturns. Above 2.0 is a significant risk signal." width={220} />
+              {edgarLoading && !edgarData ? (
+                <div className="muted" style={{ fontSize: 13, padding: "12px 0" }}>Loading live financials from SEC EDGAR…</div>
+              ) : (
+                <div className="kv">
+                  <div className="box">
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      Debt / Equity
+                      <InfoTip text="Total debt divided by shareholders' equity. Measures financial leverage. Below 0.5 is conservative; above 1.5 indicates high leverage, increasing vulnerability to economic downturns. Above 2.0 is a significant risk signal." width={220} />
+                    </div>
+                    <b>
+                      {displayRatios.debtToEquity != null ? fmt2(displayRatios.debtToEquity) : "—"}
+                      {(displayRatios.debtToEquity ?? 0) > 1.5 && <span style={{ color: "var(--warn)" }}> ⚠ elevated</span>}
+                    </b>
                   </div>
-                  <b>
-                    {fmt2(s.ratios.debtToEquity)}
-                    {s.ratios.debtToEquity > 1.5 && <span style={{ color: "var(--warn)" }}> ⚠ elevated</span>}
-                  </b>
-                </div>
-                <div className="box">
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    Net Profit Margin
-                    <InfoTip text="Net income divided by revenue. Measures how much profit a company keeps from each pound of sales. Below 5% signals thin margins with little buffer against cost shocks; below 0% means the company is losing money." width={220} />
+                  <div className="box">
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      Net Profit Margin
+                      <InfoTip text="Net income divided by revenue. Measures how much profit a company keeps from each dollar of sales. Below 5% signals thin margins with little buffer against cost shocks; below 0% means the company is losing money." width={220} />
+                    </div>
+                    <b>
+                      {displayRatios.netProfitMargin != null ? fmtPct(displayRatios.netProfitMargin) : "—"}
+                      {(displayRatios.netProfitMargin ?? 1) < 0.05 && displayRatios.netProfitMargin != null && <span style={{ color: "var(--warn)" }}> ⚠ trigger</span>}
+                    </b>
                   </div>
-                  <b>
-                    {fmtPct(s.ratios.netProfitMargin)}
-                    {s.ratios.netProfitMargin < 0.05 && <span style={{ color: "var(--warn)" }}> ⚠ trigger</span>}
-                  </b>
-                </div>
-                <div className="box">
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    Current Ratio
-                    <InfoTip text="Current assets divided by current liabilities. Measures short-term liquidity. Below 1.0 means the supplier may struggle to meet near-term obligations — a potential insolvency signal. Above 2.0 is considered healthy." width={220} />
+                  <div className="box">
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      Current Ratio
+                      <InfoTip text="Current assets divided by current liabilities. Measures short-term liquidity. Below 1.0 means the supplier may struggle to meet near-term obligations — a potential insolvency signal. Above 2.0 is considered healthy." width={220} />
+                    </div>
+                    <b>
+                      {displayRatios.currentRatio != null ? fmt2(displayRatios.currentRatio) : "—"}
+                      {(displayRatios.currentRatio ?? 2) < 1 && displayRatios.currentRatio != null && <span style={{ color: "var(--risk)" }}> ⚠ &lt; 1.0</span>}
+                    </b>
                   </div>
-                  <b>
-                    {fmt2(s.ratios.currentRatio)}
-                    {s.ratios.currentRatio < 1 && <span style={{ color: "var(--risk)" }}> ⚠ &lt; 1.0</span>}
-                  </b>
                 </div>
-              </div>
+              )}
               <div className="inline" style={{ marginTop: 12 }}>
                 <button className="btn primary" onClick={() => downloadStub(`Chain_Verity_${s.name.replace(/\s/g, "_")}.txt`, buildRiskText())}>
                   Export Risk Summary
@@ -749,12 +817,13 @@ export function SupplierDetail() {
           {/* Charts */}
           {/* Financial trend charts — tabbed */}
           {(() => {
+            const edgT = edgarData?.trends;
             const charts = [
-              { label: "Current Ratio",  el: <LineChart series={buildCR(s)}  label="Current Ratio Trend"          formatY={(v) => v.toFixed(2)}                    higherIsBetter /> },
-              { label: "Debt / Equity",  el: <LineChart series={buildDE(s)}  label="Debt-to-Equity Trend"         formatY={(v) => v.toFixed(2)}                    higherIsBetter={false} /> },
-              { label: "Net Margin",     el: <LineChart series={buildPM(s)}  label="Net Profit Margin Trend"      formatY={(v) => v.toFixed(1) + "%"}              higherIsBetter /> },
-              { label: "Cash Flow",      el: <LineChart series={buildOCF(s)} label="Operating Cash Flow Trend"    formatY={(v) => currency + v.toFixed(1) + "M"}   higherIsBetter /> },
-              { label: "EBITDA",         el: <LineChart series={buildEB(s)}  label="EBITDA Trend"                 formatY={(v) => currency + v.toFixed(1) + "M"}   higherIsBetter /> },
+              { label: "Current Ratio",  el: <LineChart series={edgT?.currentRatio?.length    ? edgT.currentRatio    : buildCR(sLive)}  label="Current Ratio Trend"          formatY={(v) => v.toFixed(2)}                    higherIsBetter /> },
+              { label: "Debt / Equity",  el: <LineChart series={edgT?.debtToEquity?.length    ? edgT.debtToEquity    : buildDE(sLive)}  label="Debt-to-Equity Trend"         formatY={(v) => v.toFixed(2)}                    higherIsBetter={false} /> },
+              { label: "Net Margin",     el: <LineChart series={edgT?.netProfitMargin?.length ? edgT.netProfitMargin : buildPM(sLive)}  label="Net Profit Margin Trend"      formatY={(v) => v.toFixed(1) + "%"}              higherIsBetter /> },
+              { label: "Cash Flow",      el: <LineChart series={edgT?.operatingCashFlow?.length ? edgT.operatingCashFlow : buildOCF(sLive)} label="Operating Cash Flow Trend" formatY={(v) => currency + v.toFixed(1) + "M"} higherIsBetter /> },
+              { label: "EBITDA",         el: <LineChart series={edgT?.ebitda?.length          ? edgT.ebitda          : buildEB(sLive)}  label="EBITDA Trend"                 formatY={(v) => currency + v.toFixed(1) + "M"}   higherIsBetter /> },
             ];
             const active = Math.min(chartTab, charts.length - 1);
             return (
