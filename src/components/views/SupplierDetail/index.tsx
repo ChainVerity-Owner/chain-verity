@@ -384,6 +384,21 @@ export function SupplierDetail() {
                         />
                       </span>
                     )}
+                    {(() => {
+                      const rp = RECOVERY_PROFILES[s.id];
+                      const isSingleSource = rp
+                        ? !rp.alternativeQualified
+                        : (s.spend ?? 0) > 0 && ((s.exposure ?? 0) / s.spend!) > 0.5;
+                      return isSingleSource ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <Badge variant="warn">⚑ Single Source</Badge>
+                          <InfoTip
+                            text="No qualified alternative supplier exists for this supplier's critical components. Single-source dependency significantly amplifies disruption risk — any failure directly impacts production with no immediate fallback."
+                            width={260}
+                          />
+                        </span>
+                      ) : null;
+                    })()}
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                       <Badge variant={dpsVariant}>
                         Disruption Risk: <b>{dps}%</b>

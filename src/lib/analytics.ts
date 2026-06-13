@@ -148,16 +148,24 @@ export function calcDPS(s: Supplier): number {
   const f = s.ratios
     ? (s.ratios.currentRatio < 1 ? 25 : 10) + (s.ratios.debtToEquity > 1.5 ? 22 : 8) + (s.ratios.netProfitMargin < 0.05 ? 20 : 5)
     : 20;
-  const op = (s.onTime ?? 100) < 90 ? 18 : 5 + (s.qualityPPM ?? 0) > 300 ? 18 : 5;
+  // Fixed: separate variables to avoid operator precedence issue
+  const onTimePenalty = (s.onTime ?? 100) < 90 ? 18 : 5;
+  const ppmPenalty = (s.qualityPPM ?? 0) > 300 ? 18 : 5;
+  const op = (onTimePenalty + ppmPenalty) / 2;
   const dep = (s.exposure ?? 0) > 10 ? 22 : 9;
-  return Math.min(95, Math.round(f * 0.35 + op * 0.25 + dep * 0.25));
+  // Fixed: weights sum to 1.0 (financial 40%, operational 30%, dependency 30%)
+  return Math.min(95, Math.round(f * 0.40 + op * 0.30 + dep * 0.30));
 }
 
 export function runMC(s: Supplier, iter = 5000): MCResult {
+  // Base probability from deterministic DPS, with ±8% stochastic variance per iteration
+  const baseProbability = calcDPS(s) / 100;
   let cnt = 0;
   const exps: number[] = [];
   for (let i = 0; i < iter; i++) {
-    if (Math.random() < 0.3 || Math.random() < 0.25 || Math.random() < 0.2) {
+    const jitter = (Math.random() - 0.5) * 0.16;
+    const p = Math.max(0.02, Math.min(0.95, baseProbability + jitter));
+    if (Math.random() < p) {
       cnt++;
       exps.push((s.exposure || 5) * (1 + Math.random() * 1.5));
     }
