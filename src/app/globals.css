@@ -275,7 +275,7 @@ tr:hover td { background: var(--surface-hover); }
   .topbar-hamburger { display: flex !important; }
   .topbar-back { display: none; }
   .topbar-right .tb-input { display: none; }
-  .topbar-right .tb-select { display: none; }
+  .topbar-right .tb-select { display: flex; font-size: 11px; padding: 6px 6px; }
   .topbar-right .btn.primary { display: none; }
   .page-sub { display: none; }
 
