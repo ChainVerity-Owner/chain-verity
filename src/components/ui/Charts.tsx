@@ -135,7 +135,7 @@ export function RiskGauge({ value, size = 160 }: { value: number; size?: number 
         <circle cx={dotX.toFixed(1)} cy={dotY.toFixed(1)} r={sw / 2 + 1.5} fill={color} stroke="var(--card)" strokeWidth="2.5" />
       </svg>
       <div style={{
-        position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)",
+        position: "absolute", top: size * 0.60, left: "50%", transform: "translate(-50%, -50%)",
         textAlign: "center", lineHeight: 1,
       }}>
         <div style={{ fontSize: size * 0.18, fontWeight: 900, color, lineHeight: 1 }}>{value}</div>
