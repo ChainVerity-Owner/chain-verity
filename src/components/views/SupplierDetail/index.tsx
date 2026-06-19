@@ -810,7 +810,6 @@ export function SupplierDetail() {
                   Export Risk Summary
                 </button>
               </div>
-              <div className="note">Exports are stubbed in this demo.</div>
             </div>
           )}
 
