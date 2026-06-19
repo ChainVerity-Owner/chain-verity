@@ -119,8 +119,8 @@ export function RiskGauge({ value, size = 160 }: { value: number; size?: number 
   const [dotX, dotY] = polar(fillAngle);
 
   return (
-    <div style={{ position: "relative", width: size, height: size * 0.72, flexShrink: 0 }}>
-      <svg width={size} height={size * 0.72} viewBox={`0 0 ${size} ${size * 0.72}`} overflow="visible">
+    <div style={{ position: "relative", width: size, height: size * 1.05, flexShrink: 0 }}>
+      <svg width={size} height={size * 1.05} viewBox={`0 0 ${size} ${size * 1.05}`}>
         {/* Track zones */}
         <path d={arc(startAngle, startAngle + 135)} fill="none" stroke="rgba(22,163,74,.18)" strokeWidth={sw} strokeLinecap="round" />
         <path d={arc(startAngle + 135, startAngle + 210)} fill="none" stroke="rgba(217,119,6,.18)" strokeWidth={sw} strokeLinecap="round" />
