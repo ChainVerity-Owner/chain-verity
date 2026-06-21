@@ -79,10 +79,12 @@ export function Sidebar() {
         <button className="sidebar-close" onClick={() => setMobileSidebarOpen(false)} aria-label="Close menu">✕</button>
       </div>
 
-      <NavSection label="Overview" items={overviewNav} allowed={allowed} />
-      <NavSection label="Network" items={networkNav} allowed={allowed} />
-      <NavSection label="Intelligence" items={intelligenceNav} allowed={allowed} />
-      <NavSection label="System" items={systemNav} allowed={allowed} />
+      <div className="sidebar-nav-scroll">
+        <NavSection label="Overview" items={overviewNav} allowed={allowed} />
+        <NavSection label="Network" items={networkNav} allowed={allowed} />
+        <NavSection label="Intelligence" items={intelligenceNav} allowed={allowed} />
+        <NavSection label="System" items={systemNav} allowed={allowed} />
+      </div>
 
       <div className="sidebar-footer">
         <button className="theme-toggle" onClick={toggleDarkMode} aria-label="Toggle dark mode">
