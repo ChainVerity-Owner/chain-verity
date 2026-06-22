@@ -70,10 +70,8 @@ body {
 /* ── Brand ── */
 .brand { padding: 18px 16px 14px; border-bottom: 1px solid #1a2640; margin-bottom: 6px; }
 .sidebar-close { display: none; }
-.brand-mark { width: 100%; display: flex; align-items: center; justify-content: center; border-radius: 12px; padding: 8px 4px; }
-.brand-mark img { width: 68%; max-width: 116px; height: auto; display: block; margin: 0 auto; }
-.brand-mark-dark { background: transparent; padding: 8px 4px; }
-.brand-mark-light { background: transparent; padding: 8px 4px; }
+.brand-mark { width: 100%; display: flex; align-items: center; justify-content: center; padding: 8px 4px; }
+.brand-mark img { width: 68%; max-width: 116px; height: auto; display: block; margin: 0 auto; filter: brightness(0) invert(1); }
 
 /* ── InfoTip ── */
 .info-tip { display: inline-flex; align-items: center; position: relative; margin-left: 4px; vertical-align: middle; }

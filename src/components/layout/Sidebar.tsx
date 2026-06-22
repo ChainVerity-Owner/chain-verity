@@ -70,9 +70,9 @@ export function Sidebar() {
   return (
     <aside className={`sidebar ${mobileSidebarOpen ? "mobile-open" : ""}`}>
       <div className="brand">
-        <div className="brand-mark brand-mark-dark">
+        <div className="brand-mark">
           <img
-            src="/logo-dark.png"
+            src="/logo-light.png"
             alt="Chain Verity"
           />
         </div>
