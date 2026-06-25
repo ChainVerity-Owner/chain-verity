@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { suppliersAll, suppliersAllUS, CONTRACTS, CONTRACTS_US } from "@/lib/data";
 import { getRec } from "@/lib/analytics";
 import { downloadStub } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
 
 // Client mode: ?client=wb shows Worcester Bosch branding in reports.
 // Default (no param) shows generic branding for all other audiences.
@@ -424,19 +426,69 @@ interface ReportItemProps {
 }
 
 function ReportItem({ r }: ReportItemProps) {
-  const [aiText, setAiText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [modalContent, setModalContent] = useState<ReactNode | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  function buildModal(result: string) {
+    const mdToHtml = (md: string) => md
+      .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+      .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+      .replace(/^# (.+)$/gm, "<h1 class='section'>$1</h1>")
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\*(.+?)\*/g, "<em>$1</em>")
+      .replace(/^[-•] (.+)$/gm, "<li>$1</li>")
+      .replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>")
+      .replace(/\n\n/g, "</p><p>")
+      .replace(/^(?!<[hul])(.+)$/gm, "<p>$1</p>");
+
+    return (
+      <div>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+          <button
+            className="btn"
+            style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
+            onClick={() => {
+              const win = window.open("", "_blank");
+              if (!win) return;
+              win.document.write(`<!DOCTYPE html><html><head><title>${r.title} — AI Narrative</title><style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 720px; margin: 40px auto; padding: 0 24px; color: #111827; line-height: 1.75; }
+                .title { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+                .meta { font-size: 12px; color: #6b7280; margin-bottom: 32px; border-bottom: 2px solid #e5e7eb; padding-bottom: 16px; }
+                h1.section { font-size: 16px; font-weight: 700; margin: 24px 0 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; color: #111827; }
+                h2 { font-size: 14px; font-weight: 700; margin: 20px 0 6px; color: #374151; }
+                h3 { font-size: 13px; font-weight: 700; margin: 14px 0 4px; color: #374151; }
+                p { margin: 0 0 10px; font-size: 13px; }
+                ul { margin: 0 0 12px; padding-left: 20px; font-size: 13px; }
+                li { margin-bottom: 5px; }
+                strong { font-weight: 700; }
+                @media print { body { margin: 20px; } }
+              </style></head><body>
+                <div class="title">${r.title}</div>
+                <div class="meta">AI-generated narrative &nbsp;·&nbsp; Chain Verity</div>
+                ${mdToHtml(result)}
+                <script>window.onload = () => window.print();</script>
+              </body></html>`);
+              win.document.close();
+            }}
+          >
+            🖨 Print / Save PDF
+          </button>
+        </div>
+        <div className="ai-analysis-body">
+          <ReactMarkdown>{result}</ReactMarkdown>
+        </div>
+      </div>
+    );
+  }
 
   async function handleNarrate() {
     setLoading(true);
-    setAiText("");
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: r.aiPrompt() }],
-        }),
+        body: JSON.stringify({ messages: [{ role: "user", content: r.aiPrompt() }] }),
       });
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       const reader = res.body.getReader();
@@ -446,41 +498,55 @@ function ReportItem({ r }: ReportItemProps) {
         const { done, value } = await reader.read();
         if (done) break;
         acc += decoder.decode(value, { stream: true });
-        setAiText(acc);
       }
+      setModalContent(buildModal(acc));
     } catch {
-      setAiText("Failed to generate narrative. Check ANTHROPIC_API_KEY.");
+      setModalContent(buildModal("Failed to generate narrative. Check ANTHROPIC_API_KEY."));
     } finally {
       setLoading(false);
+      setModalOpen(true);
     }
   }
 
   return (
-    <div className="item" style={{ flexDirection: "column", gap: 10 }}>
-      <div className="row">
-        <div>
-          <div style={{ fontWeight: 600 }}>{r.title}</div>
-          <div className="muted" style={{ fontSize: 12 }}>{r.desc}</div>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-          <button
-            className="btn ai"
-            onClick={handleNarrate}
-            disabled={loading}
+    <>
+      {modalOpen && modalContent && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+          onClick={() => setModalOpen(false)}
+        >
+          <div
+            style={{ background: "var(--card)", borderRadius: 14, boxShadow: "0 24px 64px rgba(0,0,0,.25)", width: "100%", maxWidth: 680, maxHeight: "80vh", display: "flex", flexDirection: "column" }}
+            onClick={e => e.stopPropagation()}
           >
-            {loading ? "Generating…" : "AI Narrate"}
-          </button>
-          <button className="btn primary" onClick={() => void openHtmlReport(r.title, r.generateHtml())}>
-            Open Report ↗
-          </button>
-        </div>
-      </div>
-      {aiText && (
-        <div className="callout" style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", marginTop: 4 }}>
-          {aiText}
+            <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>{r.title}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>AI-generated narrative</div>
+              </div>
+              <button onClick={() => setModalOpen(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "var(--muted)", lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ padding: "16px 20px", overflowY: "auto" }}>{modalContent}</div>
+          </div>
         </div>
       )}
-    </div>
+      <div className="item" style={{ flexDirection: "column", gap: 10 }}>
+        <div className="row">
+          <div>
+            <div style={{ fontWeight: 600 }}>{r.title}</div>
+            <div className="muted" style={{ fontSize: 12 }}>{r.desc}</div>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <button className="btn ai" onClick={handleNarrate} disabled={loading}>
+              {loading ? "Generating…" : "AI Narrate"}
+            </button>
+            <button className="btn primary" onClick={() => void openHtmlReport(r.title, r.generateHtml())}>
+              Open Report ↗
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
