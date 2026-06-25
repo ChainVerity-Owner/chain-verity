@@ -4,6 +4,7 @@ import { useApp, useSuppliers } from "@/context/AppContext";
 import { KpiCardV2 } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MiniDonut, LegendDot, HeatBar, PulseDot, Sparkline, RiskGauge } from "@/components/ui/Charts";
+import { RECOVERY_PROFILES, RECOVERY_PROFILES_US } from "@/lib/data";
 
 function alertBadgeClass(type: string) {
   if (type === "risk") return "risk" as const;
@@ -302,6 +303,168 @@ function CFODashboard() {
           </div>
           <div className="note">Index derived from spend weighting and credit risk scores.</div>
         </div>
+      </div>
+
+      {/* Spend Concentration + Delivery & Quality */}
+      <div className="grid-32">
+        {/* Spend Concentration */}
+        <div className="card">
+          <h2>Spend Concentration</h2>
+          <div className="card-sub">Portfolio spend by supplier — dependency distribution</div>
+          {(() => {
+            const totalSpend = suppliers.reduce((sum, s) => sum + (s.spend ?? 0), 0);
+            const top = [...suppliers].filter(s => s.spend).sort((a, b) => (b.spend ?? 0) - (a.spend ?? 0)).slice(0, 6);
+            const top3Pct = top.slice(0, 3).reduce((sum, s) => sum + (s.spend ?? 0), 0) / totalSpend * 100;
+            const maxSpend = top[0]?.spend ?? 1;
+            return (
+              <>
+                <div style={{ display: "flex", flexDirection: "column", gap: 9, marginTop: 14 }}>
+                  {top.map((s, i) => {
+                    const pct = ((s.spend ?? 0) / totalSpend) * 100;
+                    const barPct = ((s.spend ?? 0) / maxSpend) * 100;
+                    const barColor = pct > 20 ? "var(--risk)" : pct > 14 ? "var(--warn)" : "var(--accent)";
+                    return (
+                      <div key={s.id} onClick={() => setRoute("supplier", { id: s.id })} style={{ cursor: "pointer" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
+                          <span style={{ fontWeight: i < 2 ? 650 : 500, color: "var(--text)" }}>{s.name}</span>
+                          <span style={{ color: "var(--muted)", fontVariantNumeric: "tabular-nums" }}>
+                            {currency}{(s.spend ?? 0).toFixed(1)}M <b style={{ color: "var(--text)", marginLeft: 4 }}>{pct.toFixed(1)}%</b>
+                          </span>
+                        </div>
+                        <div style={{ height: 6, background: "var(--surface)", borderRadius: 3, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${barPct}%`, background: barColor, borderRadius: 3 }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ borderTop: "1px solid var(--line)", marginTop: 14, paddingTop: 12, display: "flex", gap: 20 }}>
+                  <div>
+                    <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 2 }}>Total spend</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{currency}{totalSpend.toFixed(1)}M</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 2 }}>Top 3 concentration</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, fontVariantNumeric: "tabular-nums", color: top3Pct > 60 ? "var(--risk)" : top3Pct > 45 ? "var(--warn)" : "var(--ok)" }}>{top3Pct.toFixed(0)}%</div>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+
+        {/* Delivery & Quality Performance */}
+        <div className="card">
+          <h2>Delivery & Quality Performance</h2>
+          <div className="card-sub">On-time delivery and defect rate vs. SLA thresholds</div>
+          {(() => {
+            const perf = [...suppliers]
+              .filter(s => s.onTime != null || s.qualityPPM != null)
+              .sort((a, b) => {
+                const scoreA = (a.onTime ?? 100) - (a.qualityPPM ?? 0) / 30;
+                const scoreB = (b.onTime ?? 100) - (b.qualityPPM ?? 0) / 30;
+                return scoreA - scoreB;
+              })
+              .slice(0, 7);
+            const belowOTD = perf.filter(s => (s.onTime ?? 100) < 95).length;
+            const belowPPM = perf.filter(s => (s.qualityPPM ?? 0) > 150).length;
+            return (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 56px 72px", gap: 8, fontSize: 10, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", paddingBottom: 6, borderBottom: "1px solid var(--line)", marginBottom: 2 }}>
+                  <span>Supplier</span>
+                  <span style={{ textAlign: "right" }}>OTD</span>
+                  <span style={{ textAlign: "right" }}>PPM</span>
+                </div>
+                {perf.map(s => {
+                  const otd = s.onTime ?? 100;
+                  const ppm = s.qualityPPM ?? 0;
+                  const otdColor = otd >= 95 ? "var(--ok)" : otd >= 90 ? "var(--warn)" : "var(--risk)";
+                  const ppmColor = ppm <= 150 ? "var(--ok)" : ppm <= 250 ? "var(--warn)" : "var(--risk)";
+                  return (
+                    <div key={s.id} onClick={() => setRoute("supplier", { id: s.id })}
+                      style={{ display: "grid", gridTemplateColumns: "1fr 56px 72px", gap: 8, fontSize: 12, padding: "7px 0", borderBottom: "1px solid var(--line)", cursor: "pointer", alignItems: "center" }}>
+                      <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
+                      <span style={{ textAlign: "right", fontWeight: 700, color: otdColor, fontVariantNumeric: "tabular-nums" }}>{otd}%</span>
+                      <span style={{ textAlign: "right", fontWeight: 700, color: ppmColor, fontVariantNumeric: "tabular-nums" }}>{ppm.toLocaleString()}</span>
+                    </div>
+                  );
+                })}
+                <div style={{ display: "flex", gap: 14, marginTop: 10, fontSize: 11, flexWrap: "wrap" }}>
+                  {belowOTD > 0 && <span style={{ color: "var(--warn)", fontWeight: 600 }}>{belowOTD} supplier{belowOTD > 1 ? "s" : ""} below 95% OTD</span>}
+                  {belowPPM > 0 && <span style={{ color: "var(--warn)", fontWeight: 600 }}>{belowPPM} above 150 PPM</span>}
+                  {belowOTD === 0 && belowPPM === 0 && <span style={{ color: "var(--ok)", fontWeight: 600 }}>All suppliers within thresholds</span>}
+                </div>
+                <div className="muted" style={{ fontSize: 10, marginTop: 4 }}>Thresholds: OTD ≥ 95% · PPM ≤ 150</div>
+              </div>
+            );
+          })()}
+        </div>
+      </div>
+
+      {/* Recovery Time Risk */}
+      <div className="card">
+        <div className="row" style={{ marginBottom: 14 }}>
+          <div>
+            <h2 style={{ margin: 0 }}>Recovery Time Risk</h2>
+            <div className="card-sub" style={{ marginBottom: 0 }}>Production halt exposure — inventory buffer vs. time to qualify an alternative</div>
+          </div>
+        </div>
+        {(() => {
+          const profiles = clientMode === "generic" ? RECOVERY_PROFILES_US : RECOVERY_PROFILES;
+          const items = suppliers
+            .filter(s => profiles[s.id])
+            .map(s => ({ s, rp: profiles[s.id], gap: profiles[s.id].timeToRecover - profiles[s.id].timeToSurvive }))
+            .sort((a, b) => b.gap - a.gap);
+          if (!items.length) return null;
+          const maxTTR = Math.max(...items.map(i => i.rp.timeToRecover));
+          const criticalGaps = items.filter(i => i.gap > 60 && !i.rp.alternativeQualified).length;
+          return (
+            <div>
+              {criticalGaps > 0 && (
+                <div style={{ background: "rgba(217,48,37,.06)", border: "1px solid rgba(217,48,37,.2)", borderRadius: 8, padding: "8px 12px", marginBottom: 14, fontSize: 12, color: "var(--risk)", fontWeight: 600 }}>
+                  ⚠ {criticalGaps} solo-sourced supplier{criticalGaps > 1 ? "s" : ""} with &gt;60-day unhedged production halt risk
+                </div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                {items.map(({ s, rp, gap }) => {
+                  const ttsPct = (rp.timeToSurvive / maxTTR) * 100;
+                  const gapPct = (Math.max(gap, 0) / maxTTR) * 100;
+                  const gapColor = gap > 60 ? "var(--risk)" : gap > 30 ? "var(--warn)" : "var(--ok)";
+                  const gapBg = gap > 60 ? "rgba(217,48,37,.2)" : gap > 30 ? "rgba(208,128,0,.15)" : "rgba(13,148,102,.1)";
+                  return (
+                    <div key={s.id} onClick={() => setRoute("supplier", { id: s.id })} style={{ cursor: "pointer" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 12, flexWrap: "wrap", gap: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontWeight: 650 }}>{s.name}</span>
+                          {!rp.alternativeQualified && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--risk)", background: "rgba(217,48,37,.08)", padding: "1px 5px", borderRadius: 3 }}>Solo sourced</span>
+                          )}
+                          {rp.alternativeQualified && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--ok)", background: "rgba(13,148,102,.08)", padding: "1px 5px", borderRadius: 3 }}>Alt. qualified</span>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", gap: 14, fontSize: 11, color: "var(--muted)" }}>
+                          <span>Buffer <b style={{ color: "var(--ok)", fontVariantNumeric: "tabular-nums" }}>{rp.timeToSurvive}d</b></span>
+                          <span>TTR <b style={{ color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>{rp.timeToRecover}d</b></span>
+                          {gap > 0 && <span style={{ fontWeight: 700, color: gapColor }}>Gap <span style={{ fontVariantNumeric: "tabular-nums" }}>{gap}d</span></span>}
+                        </div>
+                      </div>
+                      <div style={{ height: 10, background: "var(--surface)", borderRadius: 5, display: "flex", overflow: "hidden" }}>
+                        <div style={{ width: `${ttsPct}%`, height: "100%", background: "var(--ok)", borderRadius: gap > 0 ? "5px 0 0 5px" : 5 }} />
+                        {gap > 0 && <div style={{ width: `${gapPct}%`, height: "100%", background: gapBg, borderRight: `2px solid ${gapColor}` }} />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", gap: 16, marginTop: 14, fontSize: 11, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 2, background: "var(--ok)" }} /><span style={{ color: "var(--muted)" }}>Inventory buffer (TTS)</span></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 10, height: 10, borderRadius: 2, background: "rgba(217,48,37,.2)", border: "1px solid var(--risk)" }} /><span style={{ color: "var(--muted)" }}>Production halt gap</span></div>
+                <span style={{ color: "var(--muted)" }}>TTR = days to qualify alternative · Gap = confirmed halt if supplier fails today</span>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Contracts Table */}
