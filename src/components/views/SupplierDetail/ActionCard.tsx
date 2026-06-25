@@ -266,7 +266,6 @@ export function ActionCard({ supplier }: ActionCardProps) {
   }
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiCollapsed, setAiCollapsed] = useState(false);
 
   const opts = ["Renegotiation of contract", "Find secondary source", "No recommended changes"];
   const bc = rec.action === "Find secondary source" ? "risk" : rec.action === "Renegotiation of contract" ? "warn" : "ok";
@@ -311,7 +310,6 @@ export function ActionCard({ supplier }: ActionCardProps) {
   async function handleAIAnalysis() {
     setAiLoading(true);
     setAiAnalysis("");
-    setAiCollapsed(false);
     const prompt = [
       `Analyze this supplier and provide 3-4 specific, actionable recommendations. Be direct and data-driven.`,
       `Supplier: ${supplier.name} (${supplier.ticker ?? "—"})`,
@@ -324,6 +322,7 @@ export function ActionCard({ supplier }: ActionCardProps) {
       `Current recommendation: ${rec.action} — ${rec.reason}`,
     ].filter(Boolean).join("\n");
 
+    let result = "";
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -333,17 +332,22 @@ export function ActionCard({ supplier }: ActionCardProps) {
       if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let acc = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        acc += decoder.decode(value, { stream: true });
-        setAiAnalysis(acc);
+        result += decoder.decode(value, { stream: true });
+        setAiAnalysis(result);
       }
     } catch {
-      setAiAnalysis("Failed to generate analysis. Check ANTHROPIC_API_KEY.");
+      result = "Failed to generate analysis. Check ANTHROPIC_API_KEY.";
+      setAiAnalysis(result);
     } finally {
       setAiLoading(false);
+      openModal(
+        `AI Analysis — ${supplier.name}`,
+        `Recommended action: ${rec.action}`,
+        <div style={{ fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{result}</div>
+      );
     }
   }
 
@@ -391,22 +395,6 @@ export function ActionCard({ supplier }: ActionCardProps) {
         </button>
       </div>
 
-      {aiAnalysis && (
-        <div style={{ marginTop: 12 }}>
-          <div
-            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", userSelect: "none" }}
-            onClick={() => setAiCollapsed(c => !c)}
-          >
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>AI Analysis</span>
-            <span style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1 }}>{aiCollapsed ? "▾" : "▴"}</span>
-          </div>
-          {!aiCollapsed && (
-            <div className="callout" style={{ marginTop: 8, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-              {aiAnalysis}
-            </div>
-          )}
-        </div>
-      )}
 
       <div className="divider" />
       <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10 }}>Action options</div>
