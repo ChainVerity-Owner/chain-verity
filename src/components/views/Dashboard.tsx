@@ -157,6 +157,74 @@ function CFODashboard() {
         </div>
       )}
 
+      {/* Financial Distress Signals */}
+      {(() => {
+        const distressed = suppliers
+          .filter(s => s.financialHealth && s.financialHealth.score < 55)
+          .sort((a, b) => (a.financialHealth!.score) - (b.financialHealth!.score))
+          .slice(0, 4);
+        if (!distressed.length) return null;
+        const criticalFlags = distressed.flatMap(s =>
+          (s.financialHealth?.flags ?? [])
+            .filter(f => f.severity === "critical")
+            .slice(0, 1)
+            .map(f => ({ supplier: s.name, flag: f, id: s.id }))
+        );
+        return (
+          <div className="card" style={{ borderLeft: "4px solid var(--risk)" }}>
+            <div className="row" style={{ marginBottom: 14 }}>
+              <div>
+                <h2 style={{ margin: 0 }}>Financial Distress Signals</h2>
+                <div className="card-sub" style={{ marginBottom: 0 }}>Balance sheet intelligence — early indicators of supplier financial stress</div>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--risk)", background: "rgba(217,48,37,.1)", padding: "3px 9px", borderRadius: 5 }}>
+                {distressed.length} suppliers flagged
+              </span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10, marginBottom: 14 }}>
+              {distressed.map(s => {
+                const fh = s.financialHealth!;
+                const scoreColor = fh.score < 30 ? "var(--risk)" : "var(--warn)";
+                const scoreBg = fh.score < 30 ? "rgba(217,48,37,.08)" : "rgba(208,128,0,.08)";
+                return (
+                  <div key={s.id}
+                    onClick={() => setRoute("supplier", { id: s.id })}
+                    style={{ cursor: "pointer", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}
+                  >
+                    <div style={{ width: 44, height: 44, borderRadius: 8, background: scoreBg, border: `2px solid ${scoreColor}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: scoreColor, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{fh.score}</span>
+                      <span style={{ fontSize: 8, color: scoreColor, fontWeight: 700, textTransform: "uppercase" }}>score</span>
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div>
+                      <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>
+                        {fh.flags.filter(f => f.severity === "critical").length} critical · {fh.flags.filter(f => f.severity === "warn").length} watch
+                      </div>
+                      <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1, fontVariantNumeric: "tabular-nums" }}>
+                        CCC {fh.cccTrend[fh.cccTrend.length - 1]}d · {fh.netDebtEbitda[fh.netDebtEbitda.length - 1].toFixed(1)}× ND/EBITDA
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {criticalFlags.length > 0 && (
+              <div style={{ borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8 }}>Critical flags</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {criticalFlags.map((cf, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, fontSize: 12, alignItems: "flex-start" }}>
+                      <span style={{ color: "var(--risk)", flexShrink: 0 }}>⚠</span>
+                      <span><b style={{ color: "var(--text)" }}>{cf.supplier}:</b> <span style={{ color: "var(--muted)" }}>{cf.flag.text}</span></span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       <div className="grid-32">
         {/* Financial Risk Priority */}
         <div className="card">

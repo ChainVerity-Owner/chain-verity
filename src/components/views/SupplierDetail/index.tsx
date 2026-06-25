@@ -176,6 +176,260 @@ function SupplierNotes({
 }
 
 
+// ── Financial Health Score Card ───────────────────────────────────────────────
+function FinancialHealthCard({ fh, supplierName }: { fh: import("@/types").FinancialHealth; supplierName: string }) {
+  const score = fh.score;
+  const color = score >= 70 ? "var(--ok)" : score >= 40 ? "var(--warn)" : "var(--risk)";
+  const label = score >= 70 ? "Healthy" : score >= 40 ? "Watch" : "Distressed";
+  const bgColor = score >= 70 ? "rgba(13,148,102,.08)" : score >= 40 ? "rgba(208,128,0,.08)" : "rgba(217,48,37,.08)";
+
+  const factors: { label: string; value: string; ok: boolean }[] = [
+    { label: "Inventory vs Revenue", value: `${fh.inventoryGrowthYoY >= 0 ? "+" : ""}${Math.round(fh.inventoryGrowthYoY * 100)}% vs ${fh.revenueGrowthYoY >= 0 ? "+" : ""}${Math.round(fh.revenueGrowthYoY * 100)}%`, ok: fh.inventoryGrowthYoY - fh.revenueGrowthYoY < 0.1 },
+    { label: "Cash Conversion Cycle", value: `${fh.cccTrend[fh.cccTrend.length - 1]} days`, ok: fh.cccTrend[fh.cccTrend.length - 1] < 50 },
+    { label: "Net Debt / EBITDA", value: `${fh.netDebtEbitda[fh.netDebtEbitda.length - 1].toFixed(1)}×`, ok: fh.netDebtEbitda[fh.netDebtEbitda.length - 1] < 4 },
+    { label: "Interest Coverage", value: `${fh.interestCoverage.toFixed(1)}×`, ok: fh.interestCoverage > 3 },
+    { label: "CapEx / Depreciation", value: `${fh.capexToDepreciation[fh.capexToDepreciation.length - 1].toFixed(2)}×`, ok: fh.capexToDepreciation[fh.capexToDepreciation.length - 1] >= 1 },
+  ];
+
+  return (
+    <div className="card">
+      <div className="row" style={{ marginBottom: 12 }}>
+        <h2 style={{ margin: 0 }}>Financial Health Score</h2>
+        <span style={{ fontSize: 11, color: "var(--muted)" }}>Balance sheet composite · Z-Score derived</span>
+      </div>
+      <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
+        <div style={{
+          minWidth: 80, height: 80, borderRadius: 12, background: bgColor,
+          border: `2px solid ${color}`, display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", flexShrink: 0,
+        }}>
+          <span style={{ fontSize: 28, fontWeight: 800, color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{score}</span>
+          <span style={{ fontSize: 10, fontWeight: 700, color, letterSpacing: ".04em", textTransform: "uppercase", marginTop: 2 }}>{label}</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px" }}>
+            {factors.map(f => (
+              <div key={f.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
+                <span style={{ color: "var(--muted)" }}>{f.label}</span>
+                <span style={{ fontWeight: 600, color: f.ok ? "var(--text)" : "var(--warn)", fontVariantNumeric: "tabular-nums" }}>{f.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Working Capital Stress Panel ──────────────────────────────────────────────
+function WorkingCapitalCard({ fh }: { fh: import("@/types").FinancialHealth }) {
+  const quarters = ["Q1", "Q2", "Q3", "Q4"];
+  const maxVal = Math.max(...fh.dioTrend, ...fh.dsoTrend, fh.dpoCurrent + 10);
+
+  function Bar({ value, color, label }: { value: number; color: string; label: string }) {
+    const pct = Math.round((value / maxVal) * 100);
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+        <span style={{ width: 30, color: "var(--muted)", textAlign: "right", flexShrink: 0 }}>{label}</span>
+        <div style={{ flex: 1, background: "var(--surface)", borderRadius: 3, height: 10, position: "relative", overflow: "hidden" }}>
+          <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 3, transition: "width .3s" }} />
+        </div>
+        <span style={{ width: 26, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: "var(--text)", flexShrink: 0 }}>{value}d</span>
+      </div>
+    );
+  }
+
+  const cccLatest = fh.cccTrend[fh.cccTrend.length - 1];
+  const cccEarliest = fh.cccTrend[0];
+  const ccDelta = cccLatest - cccEarliest;
+
+  return (
+    <div className="card">
+      <div className="row" style={{ marginBottom: 12 }}>
+        <h2 style={{ margin: 0 }}>Working Capital Stress</h2>
+        <span style={{ fontSize: 11, color: ccDelta > 10 ? "var(--warn)" : "var(--ok)", fontWeight: 600 }}>
+          CCC {ccDelta > 0 ? `+${ccDelta}` : ccDelta}d vs 4Q ago
+        </span>
+      </div>
+
+      {/* Quarter columns */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+        {quarters.map((q, i) => {
+          const dio = fh.dioTrend[i];
+          const dso = fh.dsoTrend[i];
+          const dpo = i === fh.dioTrend.length - 1 ? fh.dpoCurrent : Math.round(fh.dpoCurrent * (0.85 + i * 0.05));
+          const ccc = fh.cccTrend[i];
+          const isLatest = i === quarters.length - 1;
+          return (
+            <div key={q} style={{
+              background: isLatest ? "var(--surface)" : "transparent",
+              border: isLatest ? "1px solid var(--line)" : "1px solid transparent",
+              borderRadius: 8, padding: "8px 10px",
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 8 }}>{q}{isLatest ? " (Latest)" : ""}</div>
+              <Bar value={dio} color="rgba(234,179,8,.7)" label="DIO" />
+              <div style={{ margin: "4px 0" }} />
+              <Bar value={dso} color="rgba(59,130,246,.7)" label="DSO" />
+              <div style={{ margin: "4px 0" }} />
+              <Bar value={dpo} color="rgba(34,197,94,.6)" label="DPO" />
+              <div style={{ borderTop: "1px solid var(--line)", margin: "8px 0 4px" }} />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                <span style={{ color: "var(--muted)" }}>CCC</span>
+                <span style={{ fontWeight: 700, color: ccc > 60 ? "var(--risk)" : ccc > 40 ? "var(--warn)" : "var(--ok)", fontVariantNumeric: "tabular-nums" }}>{ccc}d</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 11 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <div style={{ width: 10, height: 10, borderRadius: 2, background: "rgba(234,179,8,.7)" }} />
+          <span style={{ color: "var(--muted)" }}>DIO — Days Inventory Outstanding</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <div style={{ width: 10, height: 10, borderRadius: 2, background: "rgba(59,130,246,.7)" }} />
+          <span style={{ color: "var(--muted)" }}>DSO — Days Sales Outstanding</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <div style={{ width: 10, height: 10, borderRadius: 2, background: "rgba(34,197,94,.6)" }} />
+          <span style={{ color: "var(--muted)" }}>DPO — Days Payable Outstanding</span>
+        </div>
+      </div>
+      <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>
+        CCC = DIO + DSO − DPO. A rising CCC means working capital is being consumed faster. &gt;60 days is a stress signal.
+      </div>
+    </div>
+  );
+}
+
+// ── Early Warning Flags ───────────────────────────────────────────────────────
+function EarlyWarningCard({ flags }: { flags: import("@/types").EarlyWarningFlag[] }) {
+  const severityConfig = {
+    critical: { color: "var(--risk)", bg: "rgba(217,48,37,.08)", icon: "⚠", label: "Critical" },
+    warn: { color: "var(--warn)", bg: "rgba(208,128,0,.08)", icon: "▲", label: "Watch" },
+    info: { color: "var(--ok)", bg: "rgba(13,148,102,.08)", icon: "●", label: "Info" },
+  };
+
+  const critCount = flags.filter(f => f.severity === "critical").length;
+  const warnCount = flags.filter(f => f.severity === "warn").length;
+
+  return (
+    <div className="card">
+      <div className="row" style={{ marginBottom: 12 }}>
+        <h2 style={{ margin: 0 }}>Early Warning Flags</h2>
+        <div style={{ display: "flex", gap: 6 }}>
+          {critCount > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--risk)", background: "rgba(217,48,37,.1)", padding: "2px 7px", borderRadius: 4 }}>
+              {critCount} critical
+            </span>
+          )}
+          {warnCount > 0 && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--warn)", background: "rgba(208,128,0,.1)", padding: "2px 7px", borderRadius: 4 }}>
+              {warnCount} watch
+            </span>
+          )}
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {flags.map((flag, i) => {
+          const cfg = severityConfig[flag.severity];
+          return (
+            <div key={i} style={{
+              display: "flex", gap: 10, padding: "10px 12px",
+              background: cfg.bg, borderRadius: 8,
+              borderLeft: `3px solid ${cfg.color}`,
+            }}>
+              <span style={{ fontSize: 14, color: cfg.color, flexShrink: 0, lineHeight: 1.4 }}>{cfg.icon}</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", lineHeight: 1.4 }}>{flag.text}</div>
+                <div style={{ fontSize: 10, color: cfg.color, fontWeight: 600, marginTop: 2, textTransform: "uppercase", letterSpacing: ".04em" }}>{cfg.label}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="muted" style={{ fontSize: 11, marginTop: 10 }}>
+        Derived from balance sheet trend analysis. Signals are predictive indicators — not confirmed distress events.
+      </div>
+    </div>
+  );
+}
+
+// ── Leverage Trajectory Chart ─────────────────────────────────────────────────
+function LeverageChart({ fh }: { fh: import("@/types").FinancialHealth }) {
+  const data = fh.netDebtEbitda;
+  const maxVal = Math.max(...data, 5);
+  const threshold = 4;
+  const labels = ["Q1 '24", "Q2 '24", "Q3 '24", "Q4 '24", "Q1 '25", "Q2 '25", "Q3 '25", "Q4 '25"];
+  const W = 480, H = 160, pad = { top: 12, right: 12, bottom: 28, left: 36 };
+  const plotW = W - pad.left - pad.right;
+  const plotH = H - pad.top - pad.bottom;
+
+  function xPos(i: number) { return pad.left + (i / (data.length - 1)) * plotW; }
+  function yPos(v: number) { return pad.top + plotH - (v / maxVal) * plotH; }
+
+  const linePath = data.map((v, i) => `${i === 0 ? "M" : "L"}${xPos(i)},${yPos(v)}`).join(" ");
+  const areaPath = `${linePath} L${xPos(data.length - 1)},${pad.top + plotH} L${xPos(0)},${pad.top + plotH} Z`;
+  const thresholdY = yPos(threshold);
+  const latest = data[data.length - 1];
+  const breached = latest >= threshold;
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
+        Net Debt / EBITDA over 8 quarters · Covenant threshold: 4×
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", overflow: "visible" }}>
+        {/* Threshold line */}
+        <line x1={pad.left} y1={thresholdY} x2={pad.left + plotW} y2={thresholdY}
+          stroke="var(--risk)" strokeWidth={1} strokeDasharray="4 3" opacity={0.6} />
+        <text x={pad.left + plotW + 4} y={thresholdY + 4} fontSize={9} fill="var(--risk)" opacity={0.8}>4×</text>
+
+        {/* Area fill */}
+        <path d={areaPath} fill={breached ? "rgba(217,48,37,.08)" : "rgba(18,70,160,.07)"} />
+
+        {/* Line */}
+        <path d={linePath} fill="none" stroke={breached ? "var(--risk)" : "var(--accent)"} strokeWidth={2} strokeLinejoin="round" />
+
+        {/* Dots */}
+        {data.map((v, i) => (
+          <circle key={i} cx={xPos(i)} cy={yPos(v)} r={3}
+            fill={v >= threshold ? "var(--risk)" : "var(--accent)"}
+            stroke="var(--card)" strokeWidth={1.5} />
+        ))}
+
+        {/* Y axis ticks */}
+        {[0, 1, 2, 3, 4, 5].filter(v => v <= maxVal).map(v => (
+          <g key={v}>
+            <text x={pad.left - 4} y={yPos(v) + 4} fontSize={9} fill="var(--muted)" textAnchor="end">{v}×</text>
+            <line x1={pad.left} y1={yPos(v)} x2={pad.left + plotW} y2={yPos(v)}
+              stroke="var(--line)" strokeWidth={0.5} />
+          </g>
+        ))}
+
+        {/* X axis labels */}
+        {data.map((_, i) => (
+          <text key={i} x={xPos(i)} y={H - 4} fontSize={9} fill="var(--muted)" textAnchor="middle">
+            {labels[i]}
+          </text>
+        ))}
+      </svg>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, fontSize: 11 }}>
+        <span style={{ fontWeight: 700, color: breached ? "var(--risk)" : "var(--text)", fontVariantNumeric: "tabular-nums" }}>
+          Current: {latest.toFixed(1)}×
+        </span>
+        {breached && (
+          <span style={{ color: "var(--risk)", fontWeight: 600 }}>⚠ Above 4× covenant threshold</span>
+        )}
+        <span style={{ marginLeft: "auto", color: "var(--muted)" }}>
+          Interest coverage: {fh.interestCoverage.toFixed(1)}×{fh.interestCoverage < 3 ? " ⚠" : ""}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function SupplierDetail() {
   const { params, setSimulatedEscalation, simulatedEscalation, supplierNotes, addSupplierNote, deleteSupplierNote, role, currency, clientMode, platformProductLines } = useApp();
   const allSuppliers = useSuppliers();
@@ -741,6 +995,17 @@ export function SupplierDetail() {
           {/* DPS */}
           <DPSCard supplier={s} />
 
+          {/* Financial Health Score */}
+          {s.financialHealth && <FinancialHealthCard fh={s.financialHealth} supplierName={s.name} />}
+
+          {/* Working Capital Stress */}
+          {s.financialHealth && <WorkingCapitalCard fh={s.financialHealth} />}
+
+          {/* Early Warning Flags */}
+          {s.financialHealth && s.financialHealth.flags.length > 0 && (
+            <EarlyWarningCard flags={s.financialHealth.flags} />
+          )}
+
           {/* Credit Risk */}
           <CreditRiskCard supplier={s} />
 
@@ -823,6 +1088,7 @@ export function SupplierDetail() {
               { label: "Net Margin",     el: <LineChart series={edgT?.netProfitMargin?.length ? edgT.netProfitMargin : buildPM(sLive)}  label="Net Profit Margin Trend"      formatY={(v) => v.toFixed(1) + "%"}              higherIsBetter /> },
               { label: "Cash Flow",      el: <LineChart series={edgT?.operatingCashFlow?.length ? edgT.operatingCashFlow : buildOCF(sLive)} label="Operating Cash Flow Trend" formatY={(v) => currency + v.toFixed(1) + "M"} higherIsBetter /> },
               { label: "EBITDA",         el: <LineChart series={edgT?.ebitda?.length          ? edgT.ebitda          : buildEB(sLive)}  label="EBITDA Trend"                 formatY={(v) => currency + v.toFixed(1) + "M"}   higherIsBetter /> },
+              ...(sLive.financialHealth ? [{ label: "Leverage", el: <LeverageChart fh={sLive.financialHealth} /> }] : []),
             ];
             const active = Math.min(chartTab, charts.length - 1);
             return (

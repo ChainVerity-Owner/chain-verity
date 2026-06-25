@@ -1,3 +1,24 @@
+// ── Financial Health Intelligence ─────────────────────────────────────────────
+export interface EarlyWarningFlag {
+  type: "inventory" | "dso" | "dpo" | "leverage" | "revenue" | "capex" | "margin" | "ccc";
+  severity: "critical" | "warn" | "info";
+  text: string;
+}
+
+export interface FinancialHealth {
+  score: number;                  // 0–100 composite (Z-Score derived)
+  dioTrend: number[];             // Days Inventory Outstanding, 4 quarters
+  dsoTrend: number[];             // Days Sales Outstanding, 4 quarters
+  dpoCurrent: number;             // Days Payable Outstanding (current)
+  cccTrend: number[];             // Cash Conversion Cycle = DIO + DSO - DPO
+  inventoryGrowthYoY: number;     // decimal e.g. 0.28 = +28%
+  revenueGrowthYoY: number;       // decimal e.g. -0.11 = -11%
+  netDebtEbitda: number[];        // 8 quarters leverage trajectory
+  interestCoverage: number;       // EBIT / interest expense
+  capexToDepreciation: number[];  // 4 quarters
+  flags: EarlyWarningFlag[];
+}
+
 export interface FinancialRatios {
   debtToEquity: number;
   netProfitMargin: number;
@@ -220,6 +241,7 @@ export interface Supplier {
   parentSupplierIds?: string[];  // tier 2+ parents
   riskHistory?: number[];        // 12-month monthly risk score trend
   countryCode?: string;          // ISO-2 e.g. "DE", "IT", "NL"
+  financialHealth?: FinancialHealth;
 }
 
 export interface Contract {
