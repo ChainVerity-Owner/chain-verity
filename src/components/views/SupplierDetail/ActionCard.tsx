@@ -266,6 +266,7 @@ export function ActionCard({ supplier }: ActionCardProps) {
   }
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiCollapsed, setAiCollapsed] = useState(false);
 
   const opts = ["Renegotiation of contract", "Find secondary source", "No recommended changes"];
   const bc = rec.action === "Find secondary source" ? "risk" : rec.action === "Renegotiation of contract" ? "warn" : "ok";
@@ -310,6 +311,7 @@ export function ActionCard({ supplier }: ActionCardProps) {
   async function handleAIAnalysis() {
     setAiLoading(true);
     setAiAnalysis("");
+    setAiCollapsed(false);
     const prompt = [
       `Analyze this supplier and provide 3-4 specific, actionable recommendations. Be direct and data-driven.`,
       `Supplier: ${supplier.name} (${supplier.ticker ?? "—"})`,
@@ -390,8 +392,19 @@ export function ActionCard({ supplier }: ActionCardProps) {
       </div>
 
       {aiAnalysis && (
-        <div className="callout" style={{ marginTop: 12, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-          {aiAnalysis}
+        <div style={{ marginTop: 12 }}>
+          <div
+            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", userSelect: "none" }}
+            onClick={() => setAiCollapsed(c => !c)}
+          >
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--accent)" }}>AI Analysis</span>
+            <span style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1 }}>{aiCollapsed ? "▾" : "▴"}</span>
+          </div>
+          {!aiCollapsed && (
+            <div className="callout" style={{ marginTop: 8, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+              {aiAnalysis}
+            </div>
+          )}
         </div>
       )}
 
