@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useApp, useSuppliers } from "@/context/AppContext";
 import { Supplier } from "@/types";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   role: "user" | "assistant";
@@ -404,7 +405,11 @@ export function AIChat() {
             {messages.map((m, i) => (
               <div key={i} className={`ai-chat-msg ${m.role}`}>
                 <div className="ai-chat-bubble">
-                  {m.content || (m.role === "assistant" && streaming ? <span className="ai-typing">▋</span> : "")}
+                  {m.role === "assistant"
+                    ? m.content
+                      ? <ReactMarkdown>{m.content}</ReactMarkdown>
+                      : streaming ? <span className="ai-typing">▋</span> : ""
+                    : m.content}
                 </div>
               </div>
             ))}
