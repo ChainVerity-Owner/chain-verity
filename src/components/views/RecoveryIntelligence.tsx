@@ -5,6 +5,7 @@ import { useApp, useSuppliers } from "@/context/AppContext";
 import { KpiCardV2 } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { HeatBar } from "@/components/ui/Charts";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 function riskColor(days: number, threshold: number) {
   if (days <= threshold * 0.4) return "var(--risk)";
@@ -63,7 +64,7 @@ export function RecoveryIntelligence() {
 
       {/* TTR / TTS table */}
       <div className="card">
-        <h2>Time-to-Survive & Time-to-Recover</h2>
+        <h2>Time-to-Survive & Time-to-Recover<InfoTip text="TTS is days of inventory buffer before production stops if a supplier fails. TTR is days to qualify and onboard an alternative. A gap (TTR > TTS) means confirmed production halt. Solo-sourced suppliers with large gaps represent the highest continuity risk." width={260} /></h2>
         <div className="card-sub">
           Business continuity gap analysis · TTR gap = TTR − TTS (positive = at-risk window)
         </div>
@@ -192,7 +193,7 @@ export function RecoveryIntelligence() {
       <div className="card">
         <div className="row" style={{ marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
           <div>
-            <h2 style={{ margin: 0 }}>BOM — Part-Level Risk Explorer</h2>
+            <h2 style={{ margin: 0 }}>BOM — Part-Level Risk Explorer<InfoTip text="Bill of Materials decomposed to the component level, with each part scored for supply risk. Highlights solo-sourced items, long-lead-time components, and parts from high-risk suppliers. Prioritise safety stock and dual-sourcing investments here." width={260} /></h2>
             <div className="card-sub" style={{ marginBottom: 0 }}>
               Bill of Materials risk by product line · solo-sourced parts highlighted
             </div>
@@ -383,7 +384,7 @@ export function RecoveryIntelligence() {
 
       {/* Recovery actions */}
       <div className="card">
-        <h2>Recommended Recovery Actions</h2>
+        <h2>Recommended Recovery Actions<InfoTip text="Recovery actions generated from current risk posture, inventory buffers, and supplier resilience scores. Actions are prioritised by impact-to-effort ratio and aligned with product line criticality." width={240} /></h2>
         <div className="card-sub">
           AI-generated playbook based on TTR gaps and solo-sourced parts
         </div>

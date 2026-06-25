@@ -3,6 +3,7 @@
 import { useApp, useSuppliers } from "@/context/AppContext";
 import { Badge } from "@/components/ui/Badge";
 import { KpiCard } from "@/components/ui/Card";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 type ComplianceStatus = string | boolean;
 
@@ -96,7 +97,7 @@ export function ESGCompliance() {
 
       {/* Regulatory compliance matrix */}
       <div className="card">
-        <h2>Regulatory Compliance Matrix</h2>
+        <h2>Regulatory Compliance Matrix<InfoTip text="Supplier-by-supplier status across key EU and international frameworks: EUDR, CSRD, CSDDD, LkSG. Non-compliant suppliers may face import restrictions or procurement disqualification." width={260} /></h2>
         <div className="card-sub">
           {isWB
             ? "Status across CSDDD, LkSG, EUDR, and CSRD frameworks · Powered by Prewave-equivalent monitoring"
@@ -146,7 +147,7 @@ export function ESGCompliance() {
 
       {/* ESG score breakdown */}
       <div className="card">
-        <h2>ESG Score Breakdown</h2>
+        <h2>ESG Score Breakdown<InfoTip text="Portfolio ESG scores from Prewave, broken down by Environmental, Social, and Governance pillars. Low scores indicate non-financial risks including regulatory, reputational, and operational exposure." width={260} /></h2>
         <div className="card-sub">Environmental · Social · Governance pillars per supplier</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {withESG.sort((a, b) => (b.esg?.score || 0) - (a.esg?.score || 0)).map((s) => (
@@ -186,7 +187,7 @@ export function ESGCompliance() {
 
       {/* Regulatory deadline tracker */}
       <div className="card">
-        <h2>Regulatory Deadline Tracker</h2>
+        <h2>Regulatory Deadline Tracker<InfoTip text="Upcoming compliance milestones sorted by proximity. Suppliers missing key deadlines may require remediation plans, contract clauses, or procurement review." width={240} /></h2>
         <div className="card-sub">Key compliance enforcement dates affecting your supply chain</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {regulatoryItems.map((item) => (
@@ -212,7 +213,7 @@ export function ESGCompliance() {
 
       {/* Certification tracker */}
       <div className="card">
-        <h2>Certification Tracker</h2>
+        <h2>Certification Tracker<InfoTip text="Status of quality, safety, and environmental certifications across the supplier base. Expired or expiring certifications (ISO 9001, PED, IATF 16949) may affect procurement eligibility or regulatory approval." width={240} /></h2>
         <div className="card-sub">
           {isWB
             ? "ISO, IATF, and quality certifications across the supply base · expiry calendar view"

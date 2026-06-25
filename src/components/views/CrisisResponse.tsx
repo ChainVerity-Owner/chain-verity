@@ -5,6 +5,7 @@ import { useApp, useSuppliers } from "@/context/AppContext";
 import { CrisisRoom, CrisisAction, EventSeverity } from "@/types";
 import { Badge } from "@/components/ui/Badge";
 import { KpiCard } from "@/components/ui/Card";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 function severityVariant(s: EventSeverity) {
   if (s === "critical") return "risk" as const;
@@ -272,7 +273,7 @@ export function CrisisResponse() {
       {/* ── ALL OPEN ACTIONS VIEW ── */}
       {activeView === "actions" && (
         <div className="card">
-          <h2>All Open Actions</h2>
+          <h2>All Open Actions<InfoTip text="Consolidated action items across all active Crisis Rooms. Each action has an assigned owner, due date, and completion status. Overdue actions are highlighted automatically." width={240} /></h2>
           <div className="card-sub">Consolidated pending action items across all crisis rooms — sorted by severity</div>
           {allOpenActions.length === 0 ? (
             <div style={{ padding: "32px 0", textAlign: "center", color: "var(--muted)" }}>

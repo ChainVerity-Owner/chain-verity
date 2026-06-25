@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useApp } from "@/context/AppContext";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 // ── Sub-tier graph data ────────────────────────────────────────────────────────
 // Based on industry-derived intelligence for WB's tier-1 supplier base.
@@ -408,7 +409,7 @@ export function SubTierIntelligence() {
       {activeTab === "concentration" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div className="card">
-            <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 4 }}>Portfolio Concentration Analysis</div>
+            <h2 style={{ marginBottom: 4 }}>Portfolio Concentration Analysis<InfoTip text="Identifies shared sub-tier nodes where a single entity supplies multiple Tier-1 suppliers — hidden concentration risk. A disruption at a shared Tier-2 or Tier-3 node can cascade across your entire portfolio simultaneously." width={260} /></h2>
             <div className="muted" style={{ fontSize: 13, marginBottom: 16 }}>
               Sub-tier nodes shared across multiple tier-1 supply chains represent hidden single points of failure.
               A disruption at any of these nodes has cascading impact beyond what tier-1 contracts can mitigate.
@@ -477,7 +478,7 @@ export function SubTierIntelligence() {
 
           {/* Solo-sourced inputs */}
           <div className="card">
-            <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 12 }}>Solo-Sourced Tier-2 Inputs</div>
+            <h2 style={{ marginBottom: 12 }}>Solo-Sourced Tier-2 Inputs<InfoTip text="Tier-2 or Tier-3 components with no identified alternative supplier. Unhedged single points of failure — even if your Tier-1 supplier is resilient, disruption at the sub-tier level can halt production." width={260} /></h2>
             {soloSourced.map((n) => (
               <div key={n.id} style={{
                 display: "flex", justifyContent: "space-between", alignItems: "center",

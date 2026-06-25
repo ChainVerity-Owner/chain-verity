@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useApp, useSuppliers } from "@/context/AppContext";
 import { Badge } from "@/components/ui/Badge";
 import { PulseDot, MiniDonut } from "@/components/ui/Charts";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 type FilterType = "All" | "risk" | "contract" | "logistics" | "observation" | "info";
 
@@ -104,7 +105,7 @@ export function Alerts() {
       <div className="card">
         <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
           <div>
-            <h2 style={{ margin: 0 }}>Alert Feed</h2>
+            <h2 style={{ margin: 0 }}>Alert Feed<InfoTip text="Consolidated alert stream from all connected data feeds — credit monitors, ESG platforms, logistics networks, and regulatory databases. Alerts are deduplicated and ranked by potential supply impact." width={240} /></h2>
             <div className="card-sub" style={{ marginTop: 2, marginBottom: 0 }}>Unified feed from all suppliers and system events.</div>
           </div>
           <div className="inline" style={{ flexWrap: "wrap" }}>

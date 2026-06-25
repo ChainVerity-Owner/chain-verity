@@ -7,6 +7,7 @@ import { EventCategory, EventSeverity, LiveEvent } from "@/types";
 import { Badge } from "@/components/ui/Badge";
 import { KpiCardV2 } from "@/components/ui/Card";
 import { PulseDot } from "@/components/ui/Charts";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
   natural_disaster: "Natural Disaster",
@@ -93,7 +94,7 @@ export function LiveEvents() {
       <div className="card">
         <div className="row" style={{ alignItems: "flex-start", marginBottom: 12 }}>
           <div>
-            <h2 style={{ margin: 0 }}>Live Disruption Events</h2>
+            <h2 style={{ margin: 0 }}>Live Disruption Events<InfoTip text="Real-time disruption events from Everstream Analytics — natural disasters, geopolitical events, labour actions, logistics disruptions. Severity reflects the affected suppliers' combined exposure in your portfolio." width={240} /></h2>
             <div className="card-sub" style={{ marginBottom: 0 }}>
               AI-monitored across 150+ risk categories · 400+ languages · Sourced from media, regulatory, and logistics feeds
             </div>
@@ -217,7 +218,7 @@ export function LiveEvents() {
 
       {/* Shipment tracker */}
       <div className="card">
-        <h2>Shipment Intelligence</h2>
+        <h2>Shipment Intelligence<InfoTip text="In-transit shipment status across your supplier network, powered by project44. Tracks estimated arrival, delay risk, and customs status for high-value and critical-component shipments." width={240} /></h2>
         <div className="card-sub">Live tracking across active lanes · Delay risk and ETA forecasting</div>
         <div className="table-wrap">
           <table>

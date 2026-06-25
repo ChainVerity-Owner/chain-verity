@@ -194,7 +194,7 @@ function FinancialHealthCard({ fh, supplierName }: { fh: import("@/types").Finan
   return (
     <div className="card">
       <div className="row" style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: 0 }}>Financial Health Score</h2>
+        <h2 style={{ margin: 0 }}>Financial Health Score <InfoTip text="Composite 0–100 score derived from balance sheet trends using Z-Score methodology. Combines working capital efficiency, leverage trajectory, interest coverage, CapEx reinvestment rate, and inventory-to-revenue dynamics. Below 40 indicates financial stress; below 25 is distressed." width={260} /></h2>
         <span style={{ fontSize: 11, color: "var(--muted)" }}>Balance sheet composite · Z-Score derived</span>
       </div>
       <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 16 }}>
@@ -246,7 +246,7 @@ function WorkingCapitalCard({ fh }: { fh: import("@/types").FinancialHealth }) {
   return (
     <div className="card">
       <div className="row" style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: 0 }}>Working Capital Stress</h2>
+        <h2 style={{ margin: 0 }}>Working Capital Stress <InfoTip text="Quarterly trend of Days Inventory Outstanding (DIO), Days Sales Outstanding (DSO), and Days Payable Outstanding (DPO). Cash Conversion Cycle = DIO + DSO − DPO. A rising CCC signals the supplier is consuming working capital faster — a leading indicator of liquidity pressure." width={260} /></h2>
         <span style={{ fontSize: 11, color: ccDelta > 10 ? "var(--warn)" : "var(--ok)", fontWeight: 600 }}>
           CCC {ccDelta > 0 ? `+${ccDelta}` : ccDelta}d vs 4Q ago
         </span>
@@ -317,7 +317,7 @@ function EarlyWarningCard({ flags }: { flags: import("@/types").EarlyWarningFlag
   return (
     <div className="card">
       <div className="row" style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: 0 }}>Early Warning Flags</h2>
+        <h2 style={{ margin: 0 }}>Early Warning Flags <InfoTip text="Structured alerts derived from balance sheet pattern analysis. Each flag identifies a specific financial stress signal — inventory build-up versus revenue decline, receivables deterioration, leverage breach, or CapEx underinvestment. Typically 2–4 quarters ahead of credit events." width={260} /></h2>
         <div style={{ display: "flex", gap: 6 }}>
           {critCount > 0 && (
             <span style={{ fontSize: 11, fontWeight: 700, color: "var(--risk)", background: "rgba(217,48,37,.1)", padding: "2px 7px", borderRadius: 4 }}>

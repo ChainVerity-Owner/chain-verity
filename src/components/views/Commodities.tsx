@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Sparkline, TrendPill } from "@/components/ui/Charts";
 import { useApp, useSuppliers } from "@/context/AppContext";
 import { CommodityPrice } from "@/types";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 interface FredLive {
   id: string;
@@ -281,7 +282,7 @@ export function Commodities() {
 
       {/* Cross-impact table */}
       <div className="card">
-        <h2>Supplier Commodity Exposure</h2>
+        <h2>Supplier Commodity Exposure<InfoTip text="Maps raw material commodity prices to the suppliers that depend on them. Rising input costs squeeze supplier margins and may trigger credit deterioration, cost pass-through requests, or delivery delays." width={240} /></h2>
         <div className="card-sub">
           Which suppliers are exposed to rising commodities · sorted by total commodity exposures
         </div>

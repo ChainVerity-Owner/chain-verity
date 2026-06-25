@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chain Verity — Design Preview</title>
+<style>
+/* ─────────────────────────────────────────────
+   PROPOSED DESIGN TOKENS
+   ───────────────────────────────────────────── */
+:root {
+  /* Backgrounds */
+  --bg:      #edf0f7;   /* cool blue-gray canvas — not plain gray */
+  --card:    #ffffff;
+  --surface: #f4f6fb;
+  --surface-hover: #edf0f7;
+
+  /* Sidebar — dark, authoritative */
+  --sidebar-bg:      #0d1627;
+  --sidebar-border:  #1a2640;
+  --sidebar-text:    #8899b4;
+  --sidebar-hover:   rgba(255,255,255,.05);
+  --sidebar-active-bg: rgba(255,255,255,.08);
+  --sidebar-active-text: #e2e8f0;
+  --sidebar-label:   #3d526e;
+
+  /* Text */
+  --text:    #0e1520;
+  --muted:   #6b7a99;   /* blue-toned muted, not neutral slate */
+  --line:    #dde3ee;
+
+  /* Brand */
+  --accent:  #1246a0;   /* more saturated, less gray than current */
+  --accent2: #1a5bc4;
+
+  /* Semantic */
+  --ok:      #0d9466;
+  --warn:    #d08000;
+  --risk:    #d93025;
+  --info:    #2563eb;
+
+  /* Shadows — single believable shadow, not layered */
+  --shadow:    0 1px 2px rgba(14,21,32,.05), 0 3px 12px rgba(14,21,32,.07);
+  --shadow-md: 0 4px 6px rgba(14,21,32,.06), 0 10px 24px rgba(14,21,32,.1);
+
+  /* Radius — deliberately tiered */
+  --r-card:   12px;   /* was 16px — tighter feels more data-dense */
+  --r-btn:    8px;
+  --r-pill:   999px;
+  --r-inner:  6px;
+
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── App shell ── */
+.app   { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+.main  { display: flex; flex-direction: column; min-height: 100vh; overflow: hidden; }
+
+/* ─────────────────────────────────────────────
+   SIDEBAR — dark, compact
+   ───────────────────────────────────────────── */
+.sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  display: flex; flex-direction: column;
+  padding: 0;
+  position: sticky; top: 0; height: 100vh;
+  overflow-y: auto;
+}
+
+.brand {
+  padding: 20px 18px 16px;
+  border-bottom: 1px solid var(--sidebar-border);
+}
+.brand-lockup {
+  display: flex; align-items: center; gap: 9px;
+}
+.brand-icon {
+  width: 30px; height: 30px; border-radius: 8px;
+  background: var(--accent); display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0;
+}
+.brand-icon svg { width: 16px; height: 16px; }
+.brand-name {
+  font-size: 14px; font-weight: 700; color: #e2e8f0;
+  letter-spacing: -.2px;
+}
+.brand-tag {
+  font-size: 10px; color: var(--sidebar-label);
+  letter-spacing: .04em; text-transform: uppercase;
+  font-weight: 500; margin-top: 1px;
+}
+
+.nav { padding: 14px 10px; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+
+.nav-section {
+  font-size: 9px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--sidebar-label);
+  padding: 10px 8px 4px; margin-top: 4px;
+}
+.nav-section:first-child { margin-top: 0; }
+
+.nav-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; width: 100%; border: none; background: transparent;
+  border-radius: 7px; padding: 7px 8px;
+  color: var(--sidebar-text); font-size: 13px; font-weight: 450;
+  cursor: pointer; text-align: left;
+  font-family: var(--sans);
+  transition: background .1s, color .1s;
+}
+.nav-btn:hover { background: var(--sidebar-hover); color: #c8d5e8; }
+.nav-btn.active {
+  background: var(--sidebar-active-bg);
+  color: var(--sidebar-active-text);
+  font-weight: 550;
+}
+.nav-btn-icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; }
+
+.nav-count {
+  font-size: 10px; font-weight: 600;
+  padding: 1px 6px; border-radius: 999px;
+  background: rgba(217,48,37,.18); color: #f87171;
+  border: 1px solid rgba(217,48,37,.25);
+}
+
+.sidebar-footer {
+  padding: 12px 14px 16px;
+  border-top: 1px solid var(--sidebar-border);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.user-row { display: flex; align-items: center; gap: 9px; }
+.user-av {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); display: flex; align-items: center;
+  justify-content: center; font-size: 10px; font-weight: 700;
+  color: #fff; flex-shrink: 0;
+}
+.user-name  { font-size: 12px; font-weight: 600; color: #c8d5e8; }
+.user-role  { font-size: 11px; color: var(--sidebar-text); }
+.theme-row {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; color: var(--sidebar-label);
+  padding: 0 2px;
+}
+.toggle-track {
+  width: 28px; height: 15px; border-radius: 999px;
+  background: #1e2d42; position: relative; cursor: pointer;
+  transition: background .2s; flex-shrink: 0;
+}
+.toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 11px; height: 11px; border-radius: 50%; background: #4a5f7a;
+  transition: transform .2s;
+}
+
+/* ─────────────────────────────────────────────
+   TOPBAR
+   ───────────────────────────────────────────── */
+.topbar {
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  padding: 11px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; position: sticky; top: 0; z-index: 20;
+}
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+
+.back-btn {
+  border: 1px solid var(--line); background: transparent;
+  border-radius: var(--r-btn); padding: 6px 12px;
+  font-size: 13px; color: var(--muted); cursor: pointer;
+  font-family: var(--sans); display: flex; align-items: center; gap: 5px;
+  transition: background .1s, color .1s;
+}
+.back-btn:hover { background: var(--surface); color: var(--text); }
+
+.page-title { font-size: 15px; font-weight: 650; letter-spacing: -.2px; }
+.page-sub   { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+
+.tb-input {
+  border: 1px solid var(--line); border-radius: var(--r-btn);
+  padding: 7px 12px; font-size: 13px; background: var(--surface);
+  color: var(--text); min-width: 200px; outline: none;
+  font-family: var(--sans);
+  transition: border-color .15s, background .15s;
+}
+.tb-input:focus { border-color: var(--accent); background: var(--card); }
+
+.tb-select {
+  border: 1px solid var(--line); border-radius: var(--r-btn);
+  padding: 7px 10px; font-size: 13px; background: var(--surface);
+  color: var(--text); cursor: pointer; font-family: var(--sans);
+}
+
+/* ─────────────────────────────────────────────
+   BUTTONS  — no gradient, just solid color
+   ───────────────────────────────────────────── */
+.btn {
+  border: 1px solid var(--line); background: var(--card);
+  border-radius: var(--r-btn); padding: 7px 15px;
+  cursor: pointer; font-size: 13px; font-weight: 500;
+  color: var(--text); font-family: var(--sans);
+  transition: background .1s, border-color .1s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:hover { background: var(--surface); }
+
+.btn.primary {
+  background: var(--accent); border-color: var(--accent);
+  color: #fff; font-weight: 600;
+  box-shadow: 0 1px 2px rgba(18,70,160,.2);
+}
+.btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+
+.btn.ghost {
+  background: transparent; border-color: transparent; color: var(--muted);
+}
+.btn.ghost:hover { background: var(--surface); color: var(--text); }
+
+.alert-badge {
+  background: rgba(217,48,37,.08); border: 1px solid rgba(217,48,37,.2);
+  color: var(--risk); border-radius: var(--r-pill);
+  padding: 3px 10px; font-size: 12px; font-weight: 600;
+}
+
+/* ─────────────────────────────────────────────
+   CARDS
+   ───────────────────────────────────────────── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+/* Card header — no more uppercase muted labels */
+.card-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; margin-bottom: 16px;
+}
+.card-title {
+  font-size: 14px; font-weight: 650; color: var(--text);
+  letter-spacing: -.15px; line-height: 1.3;
+}
+.card-sub {
+  font-size: 12px; color: var(--muted); margin-top: 2px;
+}
+
+/* ─────────────────────────────────────────────
+   KPI v2  — cleaner hierarchy
+   ───────────────────────────────────────────── */
+.kpi-v2 {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow);
+  padding: 18px 20px 16px;
+  position: relative; overflow: hidden;
+}
+.kpi-v2::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;   /* was 3px — subtler */
+  background: var(--kpi-accent, var(--accent));
+  border-radius: var(--r-card) var(--r-card) 0 0;
+}
+.kpi-v2-label {
+  font-size: 11px; color: var(--muted); font-weight: 600;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+.kpi-v2-value {
+  font-size: 36px; font-weight: 750;
+  letter-spacing: -.04em; line-height: 1;
+  margin: 6px 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-v2-footer { display: flex; align-items: center; gap: 7px; margin-top: 4px; flex-wrap: wrap; }
+.kpi-v2-sub { font-size: 11.5px; color: var(--muted); }
+
+/* ─────────────────────────────────────────────
+   TABS  — underline style, not pills
+   ───────────────────────────────────────────── */
+.tabs-line {
+  display: flex; gap: 0; border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+.tab-line {
+  padding: 8px 14px; font-size: 13px; font-weight: 500;
+  color: var(--muted); border: none; background: transparent;
+  cursor: pointer; font-family: var(--sans);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: color .1s, border-color .1s;
+  white-space: nowrap;
+}
+.tab-line:hover { color: var(--text); }
+.tab-line.active {
+  color: var(--accent); font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+/* ─────────────────────────────────────────────
+   BADGES
+   ───────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11.5px; font-weight: 500;
+  padding: 3px 9px; border-radius: var(--r-pill);
+  border: 1px solid var(--line);
+}
+.badge.ok   { border-color: #a7f3d0; background: #ecfdf5; color: #065f46; }
+.badge.warn { border-color: #fcd34d; background: #fffbeb; color: #854d0e; }
+.badge.risk { border-color: #fca5a5; background: #fff1f2; color: #9f1239; }
+.badge.info { border-color: #93c5fd; background: #eff6ff; color: #1e40af; }
+
+/* ─────────────────────────────────────────────
+   TABLE
+   ───────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead tr { border-bottom: 1px solid var(--line); }
+th {
+  font-size: 11px; color: var(--muted); font-weight: 600;
+  padding: 0 14px 10px; text-align: left;
+  text-transform: uppercase; letter-spacing: .06em;
+}
+td {
+  font-size: 13px; padding: 11px 14px; color: var(--text);
+  border-bottom: 1px solid var(--line);
+}
+tr:last-child td { border-bottom: none; }
+tbody tr { transition: background .1s; }
+tbody tr:hover td { background: var(--surface); }
+
+/* risk pill */
+.risk-pill {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: var(--r-pill);
+  font-size: 12px; font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.risk-pill.high { background: rgba(217,48,37,.09); color: #b91c1c; }
+.risk-pill.med  { background: rgba(208,128,0,.1);  color: #92400e; }
+.risk-pill.low  { background: rgba(13,148,102,.1); color: #065f46; }
+
+/* ─────────────────────────────────────────────
+   HERO CARD
+   ───────────────────────────────────────────── */
+.hero-card {
+  background: var(--accent);
+  border-radius: var(--r-card);
+  padding: 22px 24px; color: #fff;
+  position: relative; overflow: hidden;
+  box-shadow: 0 4px 12px rgba(18,70,160,.25), 0 1px 3px rgba(18,70,160,.2);
+}
+.hero-card::before {
+  content: ''; position: absolute;
+  top: -60px; right: -40px;
+  width: 200px; height: 200px; border-radius: 50%;
+  background: rgba(255,255,255,.06); pointer-events: none;
+}
+.hero-card::after {
+  content: ''; position: absolute;
+  bottom: -70px; right: 60px;
+  width: 170px; height: 170px; border-radius: 50%;
+  background: rgba(255,255,255,.04); pointer-events: none;
+}
+.hero-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; opacity: .6; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 6px;
+}
+.hero-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,.7);
+}
+.hero-value { font-size: 52px; font-weight: 800; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.hero-sub   { font-size: 13px; opacity: .65; margin-top: 4px; }
+.hero-stats {
+  display: flex; gap: 28px; margin-top: 20px;
+  padding-top: 16px; border-top: 1px solid rgba(255,255,255,.15);
+}
+.hero-stat-v { font-size: 22px; font-weight: 750; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.hero-stat-l { font-size: 11px; opacity: .55; margin-top: 1px; }
+
+/* ─────────────────────────────────────────────
+   DIVIDERS, MISC
+   ───────────────────────────────────────────── */
+.divider { height: 1px; background: var(--line); margin: 14px 0; }
+.grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid-32 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
+.content { flex: 1; padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; }
+
+.trend-up   { color: var(--risk); font-size: 12px; font-weight: 600; }
+.trend-down { color: var(--ok);   font-size: 12px; font-weight: 600; }
+
+/* alert items */
+.alert-item {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 11px 14px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--surface);
+  cursor: pointer; transition: background .1s;
+}
+.alert-item:hover { background: var(--surface-hover); }
+.sev-bar { width: 3px; border-radius: 2px; align-self: stretch; flex-shrink: 0; }
+
+/* callout */
+.callout {
+  padding: 10px 14px; border-radius: 8px;
+  border-left: 3px solid var(--accent);
+  background: #f0f5ff; font-size: 13px; color: #1e3a8a;
+}
+
+/* progress */
+.progress { height: 5px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 999px; }
+
+/* ─────────────────────────────────────────────
+   COMPARISON BAR (shows old vs new)
+   ───────────────────────────────────────────── */
+.compare-label {
+  font-size: 11px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted);
+  padding: 6px 0 4px; display: flex; align-items: center; gap: 8px;
+}
+.compare-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--line);
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ═══════════════════════════════════
+       SIDEBAR — DARK
+       ═══════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-lockup">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <path d="M14 17.5h7M17.5 14v7"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-name">Chain Verity</div>
+          <div class="brand-tag">Supply Intelligence</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-section">Overview</div>
+      <button class="nav-btn active">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="nav-btn-icon">⬡</span> Dashboard
+        </span>
+      </button>
+      <button class="nav-btn">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="nav-btn-icon">◎</span> Alerts
+        </span>
+        <span class="nav-count">4</span>
+      </button>
+      <button class="nav-btn">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="nav-btn-icon">⚡</span> Live Events
+        </span>
+        <span class="nav-count">8</span>
+      </button>
+
+      <div class="nav-section" style="margin-top:8px">Network</div>
+      <button class="nav-btn">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="nav-btn-icon">◈</span> Suppliers
+        </span>
+      </button>
+      <button class="nav-btn">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="nav-btn-icon">◻</span> Risk Map
+        </span>
+      </button>
+      <button class="nav-btn">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="nav-btn-icon">◌</span> Network Map
+        </span>
+      </button>
+      <button class="nav-btn">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="nav-btn-icon">⊹</span> Sub-Tier Intel
+        </span>
+      </button>
+
+      <div class="nav-section" style="margin-top:8px">Intelligence</div>
+      <button class="nav-btn">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="nav-btn-icon">◈</span> Analytics
+        </span>
+      </button>
+      <button class="nav-btn">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="nav-btn-icon">◎</span> ESG &amp; Compliance
+        </span>
+      </button>
+      <button class="nav-btn">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="nav-btn-icon">⬡</span> Recovery Intel
+        </span>
+      </button>
+      <button class="nav-btn">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="nav-btn-icon">◻</span> Reports
+        </span>
+      </button>
+
+      <div class="nav-section" style="margin-top:8px">System</div>
+      <button class="nav-btn">
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="nav-btn-icon">⚙</span> Settings
+        </span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-row">
+        <div class="user-av">NP</div>
+        <div>
+          <div class="user-name">Priya Nair</div>
+          <div class="user-role">Risk Analyst</div>
+        </div>
+      </div>
+      <div class="theme-row">
+        <span>Light mode</span>
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════
+       MAIN
+       ═══════════════════════════════════ -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="back-btn">← Back</button>
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-sub">Working capital at risk, first.</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <input class="tb-input" placeholder="Jump to supplier…" />
+        <select class="tb-select">
+          <option>Role: Analyst</option>
+          <option>Role: CFO</option>
+          <option>Role: Procurement</option>
+        </select>
+        <span class="alert-badge">Alerts 10</span>
+        <button class="btn primary">Export</button>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="content">
+
+      <!-- Hero card -->
+      <div class="hero-card">
+        <div class="hero-label"><span class="hero-dot"></span>Risk Intelligence Dashboard</div>
+        <div style="display:flex;align-items:flex-end;gap:40px;flex-wrap:wrap">
+          <div>
+            <div class="hero-value">41</div>
+            <div class="hero-sub">Portfolio average risk score</div>
+          </div>
+          <div class="hero-stats">
+            <div>
+              <div class="hero-stat-v" style="color:#f87171">2</div>
+              <div class="hero-stat-l">UFLPA non-compliant</div>
+            </div>
+            <div>
+              <div class="hero-stat-v" style="color:#fbbf24">2</div>
+              <div class="hero-stat-l">Elevated DPS (≥50)</div>
+            </div>
+            <div>
+              <div class="hero-stat-v" style="color:#818cf8">3</div>
+              <div class="hero-stat-l">High-spend suppliers</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI row -->
+      <div class="grid-4">
+        <div class="kpi-v2" style="--kpi-accent: #0d9466">
+          <div class="kpi-v2-label">Average Risk Score</div>
+          <div class="kpi-v2-value">41</div>
+          <div class="kpi-v2-footer">
+            <span class="kpi-v2-sub">Across all suppliers</span>
+            <span class="trend-up">↑ 3</span>
+          </div>
+        </div>
+        <div class="kpi-v2" style="--kpi-accent: #d93025">
+          <div class="kpi-v2-label">UFLPA Non-Compliant</div>
+          <div class="kpi-v2-value">2</div>
+          <div class="kpi-v2-footer">
+            <span class="kpi-v2-sub">Suppliers requiring action</span>
+          </div>
+        </div>
+        <div class="kpi-v2" style="--kpi-accent: #8b5cf6">
+          <div class="kpi-v2-label">High-Spend Suppliers</div>
+          <div class="kpi-v2-value">3</div>
+          <div class="kpi-v2-footer">
+            <span class="kpi-v2-sub">Annual spend ≥ $10M</span>
+          </div>
+        </div>
+        <div class="kpi-v2" style="--kpi-accent: #d08000">
+          <div class="kpi-v2-label">Elevated DPS</div>
+          <div class="kpi-v2-value">2</div>
+          <div class="kpi-v2-footer">
+            <span class="kpi-v2-sub">Risk score ≥ 50</span>
+            <span class="trend-up">↑ 1</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main content area -->
+      <div class="grid-32">
+
+        <!-- Left: Risk Signal Analysis -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Risk Signal Analysis</div>
+              <div class="card-sub">Suppliers sorted by composite risk indicators</div>
+            </div>
+          </div>
+
+          <!-- Tabs — underline style -->
+          <div class="tabs-line">
+            <button class="tab-line active">All Suppliers</button>
+            <button class="tab-line">Critical</button>
+            <button class="tab-line">Watchlist</button>
+            <button class="tab-line">Compliant</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Supplier</th>
+                  <th>Tier</th>
+                  <th>Risk Score</th>
+                  <th>Status</th>
+                  <th>Trend</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Zhonghe Precision</strong><br><span style="font-size:11px;color:var(--muted)">Electronics · APAC</span></td>
+                  <td style="color:var(--muted)">Tier 1</td>
+                  <td><span class="risk-pill high">73</span></td>
+                  <td><span class="badge risk">Escalated</span></td>
+                  <td><span class="trend-up">↑ 12</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Flex Ltd.</strong><br><span style="font-size:11px;color:var(--muted)">Electronics · APAC</span></td>
+                  <td style="color:var(--muted)">Tier 1</td>
+                  <td><span class="risk-pill high">62</span></td>
+                  <td><span class="badge warn">Under Review</span></td>
+                  <td><span class="trend-up">↑ 5</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Haynes International</strong><br><span style="font-size:11px;color:var(--muted)">Materials · NA</span></td>
+                  <td style="color:var(--muted)">Tier 1</td>
+                  <td><span class="risk-pill med">46</span></td>
+                  <td><span class="badge warn">Monitoring</span></td>
+                  <td><span class="trend-down">↓ 2</span></td>
+                </tr>
+                <tr>
+                  <td><strong>XPO Inc.</strong><br><span style="font-size:11px;color:var(--muted)">Logistics · NA</span></td>
+                  <td style="color:var(--muted)">Tier 2</td>
+                  <td><span class="risk-pill med">41</span></td>
+                  <td><span class="badge ok">Compliant</span></td>
+                  <td>—</td>
+                </tr>
+                <tr>
+                  <td><strong>Honeywell Sensing</strong><br><span style="font-size:11px;color:var(--muted)">Components · NA</span></td>
+                  <td style="color:var(--muted)">Tier 1</td>
+                  <td><span class="risk-pill low">31</span></td>
+                  <td><span class="badge ok">Compliant</span></td>
+                  <td><span class="trend-down">↓ 4</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right: Risk Distribution -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Risk Distribution</div>
+              <div class="card-sub">Portfolio breakdown by risk band</div>
+            </div>
+          </div>
+
+          <!-- Gauge placeholder -->
+          <div style="display:flex;flex-direction:column;align-items:center;padding:16px 0 8px">
+            <div style="position:relative;width:140px;height:80px">
+              <svg width="140" height="80" viewBox="0 0 140 80">
+                <path d="M 14 76 A 56 56 0 0 1 126 76" fill="none" stroke="#dde3ee" stroke-width="14" stroke-linecap="round"/>
+                <path d="M 14 76 A 56 56 0 0 1 126 76" fill="none" stroke="url(#g)" stroke-width="14" stroke-linecap="round" stroke-dasharray="175" stroke-dashoffset="88"/>
+                <defs>
+                  <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#0d9466"/>
+                    <stop offset="50%" stop-color="#d08000"/>
+                    <stop offset="100%" stop-color="#d93025"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%);text-align:center">
+                <div style="font-size:26px;font-weight:750;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1">41</div>
+                <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Avg Risk</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:7px;margin-top:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px">
+              <span style="display:flex;align-items:center;gap:6px">
+                <span style="width:8px;height:8px;border-radius:50%;background:#0d9466;display:inline-block"></span>
+                Low (0–34)
+              </span>
+              <strong>4</strong>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px">
+              <span style="display:flex;align-items:center;gap:6px">
+                <span style="width:8px;height:8px;border-radius:50%;background:#d08000;display:inline-block"></span>
+                Med (35–64)
+              </span>
+              <strong>3</strong>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px">
+              <span style="display:flex;align-items:center;gap:6px">
+                <span style="width:8px;height:8px;border-radius:50%;background:#d93025;display:inline-block"></span>
+                High (65+)
+              </span>
+              <strong>1</strong>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="card-title" style="font-size:13px;margin-bottom:10px">UFLPA Compliance</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px">
+              <span>Zhonghe Precision</span>
+              <span class="badge risk">Non-Compliant</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px">
+              <span>Flex Ltd.</span>
+              <span class="badge warn">Under Review</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px">
+              <span>Haynes International</span>
+              <span class="badge ok">Compliant</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:13px">
+              <span>XPO Inc.</span>
+              <span class="badge ok">Compliant</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Buttons + controls reference row -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Component Reference</div>
+            <div class="card-sub">Buttons, badges, callouts</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px">
+          <button class="btn primary">Export Report</button>
+          <button class="btn">Filter</button>
+          <button class="btn">↓ Download</button>
+          <button class="btn ghost">Dismiss</button>
+          <span class="badge ok">✓ Compliant</span>
+          <span class="badge warn">⚠ Under Review</span>
+          <span class="badge risk">✕ Non-Compliant</span>
+          <span class="badge info">ℹ Intelligence</span>
+        </div>
+        <div class="callout">
+          Trend signals indicate financial stress building. Use commercial terms to reduce disruption risk.
+        </div>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:2px">
+            <span>Supply chain exposure by region</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:12px">
+            <span style="width:60px;color:var(--muted);flex-shrink:0">APAC</span>
+            <div class="progress" style="flex:1"><div class="progress-fill" style="width:68%;background:var(--risk)"></div></div>
+            <span style="width:28px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600">68%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:12px">
+            <span style="width:60px;color:var(--muted);flex-shrink:0">NA</span>
+            <div class="progress" style="flex:1"><div class="progress-fill" style="width:22%;background:var(--ok)"></div></div>
+            <span style="width:28px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600">22%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:12px">
+            <span style="width:60px;color:var(--muted);flex-shrink:0">EMEA</span>
+            <div class="progress" style="flex:1"><div class="progress-fill" style="width:10%;background:var(--warn)"></div></div>
+            <span style="width:28px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600">10%</span>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+</body>
+</html>

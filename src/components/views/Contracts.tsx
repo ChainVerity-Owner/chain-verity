@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { KpiCard } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 interface ContractAnalysis {
   riskLevel: string;
@@ -192,7 +193,7 @@ export function Contracts() {
       </div>
 
       <div className="card">
-        <h2>Contract Register</h2>
+        <h2>Contract Register<InfoTip text="Full register of supplier contracts including MSAs, LTAs, and spot agreements. Tracks value, expiry, status, and auto-renewal flags. Contracts in renegotiation or nearing expiry are surfaced first." width={240} /></h2>
         <div className="card-sub">Renewal governance and milestone tracking.</div>
         <div className="table-wrap">
           <table>

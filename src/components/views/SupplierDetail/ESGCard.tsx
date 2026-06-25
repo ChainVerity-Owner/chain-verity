@@ -62,7 +62,7 @@ export function ESGCard({ supplier }: ESGCardProps) {
     <div className="card">
       <div className="row" style={{ alignItems: "flex-start", marginBottom: 12 }}>
         <div>
-          <h2 style={{ margin: 0 }}>ESG & Compliance</h2>
+          <h2 style={{ margin: 0 }}>ESG & Compliance <InfoTip text="Environmental, Social, and Governance score sourced from Prewave, scored 0–100. Reflects carbon footprint, labour practices, governance quality, and compliance with EU frameworks (EUDR, CSRD, CSDDD, LkSG). Scores below 60 indicate meaningful non-financial risk." width={260} /></h2>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
             360° supplier score · Prewave-equivalent monitoring · Last audit: {esg.lastAudit || "Not available"}
           </div>

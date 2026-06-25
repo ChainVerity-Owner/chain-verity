@@ -5,6 +5,7 @@ import { KpiCardV2 } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MiniDonut, LegendDot, HeatBar, PulseDot, Sparkline, RiskGauge } from "@/components/ui/Charts";
 import { RECOVERY_PROFILES, RECOVERY_PROFILES_US } from "@/lib/data";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 function alertBadgeClass(type: string) {
   if (type === "risk") return "risk" as const;
@@ -102,22 +103,26 @@ function CFODashboard() {
               sub="Across all active suppliers" accent="var(--risk)"
               trend={-3.2} trendSuffix="%" trendHigherIsBetter={false}
               sparkData={exposureSparkData}
+              info="Sum of spend-weighted exposure across all active suppliers where a risk event could disrupt supply. Calculated as supplier spend × disruption probability × financial severity multiplier."
             />
             <KpiCardV2
               label="High-Risk Suppliers" value={String(highRisk.length)}
               sub="Risk score ≥ 65" accent="var(--risk)"
               trend={1} trendSuffix="" trendHigherIsBetter={false}
               icon="⚠️"
+              info="Suppliers with a composite risk score ≥ 65. Scores combine financial health, credit rating, on-time delivery, ESG flags, and live event exposure. Each warrants an active mitigation plan."
             />
             <KpiCardV2
               label="Contract Value at Risk" value={`${currency}${contractValueAtRisk.toFixed(1)}M`}
               sub="Renegotiation or pending renewal" accent="var(--warn)"
               trend={-8} trendSuffix="%" trendHigherIsBetter={false}
+              info="Total contract value of agreements currently under renegotiation or pending renewal. Delays in execution leave supply commitments unhedged and expose pricing to spot-market volatility."
             />
             <KpiCardV2
               label="Observation Windows" value={String(underObservation.length)}
               sub="Active 90-day monitoring" accent="var(--info)"
               icon="👁"
+              info="Suppliers placed under active 90-day monitoring due to elevated risk signals. Observation windows trigger weekly check-ins, enhanced data feeds, and escalation protocols if conditions worsen."
             />
             <KpiCardV2
               label="Portfolio Avg Risk" value={String(avgRiskNow)}
@@ -125,12 +130,14 @@ function CFODashboard() {
               accent={avgRiskNow >= 65 ? "var(--risk)" : avgRiskNow >= 45 ? "var(--warn)" : "var(--ok)"}
               trend={avgRiskDelta} trendSuffix=" pts" trendHigherIsBetter={false}
               sparkData={avgRiskTrend}
+              info="Mean composite risk score across all suppliers, trended over the past 12 months. Rising trend indicates portfolio-wide deterioration. Scores above 65 require CFO-level review."
             />
             <KpiCardV2
               label="Spend Concentration" value={`${top3Pct.toFixed(0)}%`}
               sub={`Top 3 suppliers · ${currency}${totalSpend.toFixed(1)}M total`}
               accent={top3Pct > 60 ? "var(--risk)" : top3Pct > 45 ? "var(--warn)" : "var(--ok)"}
               trend={undefined}
+              info="Percentage of total spend flowing through your top 3 suppliers. Concentration above 60% creates systemic risk — a single supplier failure disproportionately impacts the entire supply chain."
             />
             <KpiCardV2
               label="Below OTD Threshold" value={String(belowOTD)}
@@ -138,6 +145,7 @@ function CFODashboard() {
               accent={belowOTD >= 3 ? "var(--risk)" : belowOTD > 0 ? "var(--warn)" : "var(--ok)"}
               trend={undefined}
               icon={belowOTD > 0 ? "📦" : undefined}
+              info="Suppliers delivering below the 95% on-time threshold. Persistent delivery underperformance is a leading indicator of operational stress — often preceding financial deterioration by 1–2 quarters."
             />
             <KpiCardV2
               label="Unhedged Halt Risk" value={String(haltRisk)}
@@ -145,6 +153,7 @@ function CFODashboard() {
               accent={haltRisk >= 2 ? "var(--risk)" : haltRisk > 0 ? "var(--warn)" : "var(--ok)"}
               trend={undefined}
               icon={haltRisk > 0 ? "🔴" : undefined}
+              info="Solo-sourced suppliers where Time-to-Recover exceeds Time-to-Survive by more than 60 days — meaning a disruption would halt production before an alternative can be qualified. Highest-priority continuity risk."
             />
           </div>
         );
@@ -204,7 +213,7 @@ function CFODashboard() {
           <div className="card" style={{ borderLeft: "4px solid var(--risk)" }}>
             <div className="row" style={{ marginBottom: 14 }}>
               <div>
-                <h2 style={{ margin: 0 }}>Financial Distress Signals</h2>
+                <h2 style={{ margin: 0 }}>Financial Distress Signals <InfoTip text="Suppliers showing early-stage balance sheet deterioration, derived from working capital trends, leverage trajectory, and inventory-vs-revenue divergence. Predictive signals — typically 2–4 quarters ahead of credit events." /></h2>
                 <div className="card-sub" style={{ marginBottom: 0 }}>Balance sheet intelligence — early indicators of supplier financial stress</div>
               </div>
               <span style={{ fontSize: 11, fontWeight: 700, color: "var(--risk)", background: "rgba(217,48,37,.1)", padding: "3px 9px", borderRadius: 5 }}>
@@ -260,7 +269,7 @@ function CFODashboard() {
         <div className="card">
           <div className="row" style={{ marginBottom: 12 }}>
             <div>
-              <h2 style={{ margin: 0 }}>Financial Risk Priority</h2>
+              <h2 style={{ margin: 0 }}>Financial Risk Priority <InfoTip text="Suppliers with risk score ≥ 50, ranked by severity. Risk scores combine financial health, credit signals, on-time delivery, and event exposure. Scores ≥ 65 require immediate executive action." /></h2>
               <div className="card-sub" style={{ marginBottom: 0 }}>Suppliers requiring executive attention</div>
             </div>
             <Badge variant="risk">{highRisk.length} critical</Badge>
@@ -296,7 +305,7 @@ function CFODashboard() {
 
         {/* Risk Distribution */}
         <div className="card">
-          <h2>Portfolio Risk Distribution</h2>
+          <h2>Portfolio Risk Distribution <InfoTip text="Breakdown of all suppliers by risk band: High (≥65), Medium (45–64), Low (<45). Category bars show exposure concentration weighted by credit risk and spend." /></h2>
           <div className="card-sub">Supplier portfolio breakdown by risk band</div>
           <div className="chart-row" style={{ marginTop: 16 }}>
             <MiniDonut
@@ -336,7 +345,7 @@ function CFODashboard() {
 
       {/* Contracts Table */}
       <div className="card">
-        <h2>Contracts Requiring Attention</h2>
+        <h2>Contracts Requiring Attention <InfoTip text="Contracts in active renegotiation or pending renewal. Delays in execution create unhedged supply risk — review for pricing, SLA, and continuity clauses." /></h2>
         <div className="card-sub">Renewals and renegotiations in progress</div>
         <div className="table-wrap">
           <table>
@@ -361,7 +370,7 @@ function CFODashboard() {
       {/* Alerts Feed */}
       <div className="card">
         <div className="row" style={{ marginBottom: 12 }}>
-          <h2 style={{ margin: 0 }}>Recent Alerts</h2>
+          <h2 style={{ margin: 0 }}>Recent Alerts <InfoTip text="Real-time signal feed from financial data providers, logistics networks, and regulatory trackers. Alerts are prioritised by potential supply impact." /></h2>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <PulseDot color="var(--risk)" />
             <span style={{ fontSize: 12, color: "var(--muted)" }}>{platformAlerts.length} active</span>
@@ -462,10 +471,10 @@ function ProcurementDashboard() {
       </div>
 
       <div className="grid-4">
-        <KpiCardV2 label="Contract Renewals Due" value={String(renewalsDue.length)} sub="Within 90 days" accent="var(--warn)" trend={2} trendSuffix="" trendHigherIsBetter={false} icon="📄" />
-        <KpiCardV2 label="On-Time Rate <95%" value={String(lowOnTime.length)} sub="Suppliers below threshold" accent="var(--warn)" icon="⏱" />
-        <KpiCardV2 label="Active Crisis Rooms" value={String(openCrisis.length)} sub="Requiring action" accent="var(--risk)" icon="🚨" />
-        <KpiCardV2 label="Shipments at Risk" value={String(atRiskShipments.length)} sub="Delayed or customs hold" accent="var(--risk)" trend={-1} trendSuffix="" trendHigherIsBetter={false} />
+        <KpiCardV2 label="Contract Renewals Due" value={String(renewalsDue.length)} sub="Within 90 days" accent="var(--warn)" trend={2} trendSuffix="" trendHigherIsBetter={false} icon="📄" info="Contracts expiring within the next 90 days. Early engagement prevents auto-renewal on unfavourable terms and creates leverage for renegotiation — especially critical where no alternative supplier is qualified." />
+        <KpiCardV2 label="On-Time Rate <95%" value={String(lowOnTime.length)} sub="Suppliers below threshold" accent="var(--warn)" icon="⏱" info="Suppliers currently delivering below the 95% on-time delivery benchmark. Persistent OTD shortfalls increase safety stock requirements and are correlated with downstream operational risk." />
+        <KpiCardV2 label="Active Crisis Rooms" value={String(openCrisis.length)} sub="Requiring action" accent="var(--risk)" icon="🚨" info="Open Crisis Rooms with unresolved actions. Each room represents an active supply disruption being managed — track completion of mitigation steps and escalation status." />
+        <KpiCardV2 label="Shipments at Risk" value={String(atRiskShipments.length)} sub="Delayed or customs hold" accent="var(--risk)" trend={-1} trendSuffix="" trendHigherIsBetter={false} info="In-transit shipments currently flagged as Delayed, At Risk, or held at customs. Sourced from project44 carrier telemetry. Each at-risk shipment may require expedite or alternative routing." />
       </div>
 
       <div className="grid-32">
@@ -473,7 +482,7 @@ function ProcurementDashboard() {
         <div className="card">
           <div className="row" style={{ marginBottom: 12 }}>
             <div>
-              <h2 style={{ margin: 0 }}>Operational Priority</h2>
+              <h2 style={{ margin: 0 }}>Operational Priority <InfoTip text="Suppliers with active intervention states — Escalated, Mitigation In Progress, or Under Observation — sorted by urgency. Each requires a documented action plan." /></h2>
               <div className="card-sub" style={{ marginBottom: 0 }}>Suppliers needing procurement action now</div>
             </div>
             <Badge variant="risk">{urgentCount} urgent</Badge>
@@ -505,7 +514,7 @@ function ProcurementDashboard() {
 
         {/* Shipment Tracker */}
         <div className="card">
-          <h2>Shipment Tracker</h2>
+          <h2>Shipment Tracker <InfoTip text="In-transit shipments flagged as Delayed, At Risk, or under Customs Hold. Scored using carrier telemetry, port congestion data, and weather disruption signals." /></h2>
           <div className="card-sub">Active inbound shipments</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
             {platformShipments.map((s) => {
@@ -536,7 +545,7 @@ function ProcurementDashboard() {
 
       {/* Contracts Pipeline */}
       <div className="card">
-        <h2>Contract Renewals Pipeline</h2>
+        <h2>Contract Renewals Pipeline <InfoTip text="Upcoming renewals sorted by expiry date. Review auto-renewal clauses, assess supplier performance against SLA history, and identify re-sourcing opportunities before expiry." /></h2>
         <div className="table-wrap">
           <table>
             <thead>
@@ -615,20 +624,21 @@ function AnalystDashboard() {
       </div>
 
       <div className="grid-4">
-        <KpiCardV2 label="Average Risk Score" value={String(avgRisk)} sub="Across all suppliers" accent={avgRisk >= 65 ? "var(--risk)" : avgRisk >= 45 ? "var(--warn)" : "var(--ok)"} trend={3} trendSuffix="" trendHigherIsBetter={false} sparkData={avgSparkData} />
+        <KpiCardV2 label="Average Risk Score" value={String(avgRisk)} sub="Across all suppliers" accent={avgRisk >= 65 ? "var(--risk)" : avgRisk >= 45 ? "var(--warn)" : "var(--ok)"} trend={3} trendSuffix="" trendHigherIsBetter={false} sparkData={avgSparkData} info="Mean composite risk score across all suppliers in the portfolio. Combines financial health, delivery performance, credit signals, and ESG exposure. Scores above 65 indicate portfolio-level distress." />
         <KpiCardV2
           label={clientMode === "generic" ? "UFLPA Non-Compliant" : "CSDDD Non-Compliant"}
           value={clientMode === "generic" ? String(uflpaNonCompliant.length) : String(csdddNonCompliant.length)}
           sub="Suppliers requiring action" accent="var(--risk)" icon="🌿"
+          info={clientMode === "generic" ? "Suppliers flagged as non-compliant with the Uyghur Forced Labor Prevention Act (UFLPA). Non-compliant suppliers face CBP import detentions — goods may be withheld at the US border pending documentation." : "Suppliers not yet compliant with the EU Corporate Sustainability Due Diligence Directive (CSDDD). Non-compliance can result in civil liability and procurement disqualification under EU law."}
         />
-        <KpiCardV2 label="High-Spend Suppliers" value={String(highSpend.length)} sub={`Annual spend ≥ ${currency}10M`} accent="var(--accent)" icon="💰" />
-        <KpiCardV2 label="Elevated DPS" value={String(elevatedDPS.length)} sub="Risk score ≥ 50" accent="var(--warn)" trend={1} trendSuffix="" trendHigherIsBetter={false} />
+        <KpiCardV2 label="High-Spend Suppliers" value={String(highSpend.length)} sub={`Annual spend ≥ ${currency}10M`} accent="var(--accent)" icon="💰" info={`Suppliers representing the largest individual spend commitments (≥ ${currency}10M annually). High-spend suppliers warrant closer monitoring — a disruption carries greater financial impact than a low-spend equivalent.`} />
+        <KpiCardV2 label="Elevated DPS" value={String(elevatedDPS.length)} sub="Risk score ≥ 50" accent="var(--warn)" trend={1} trendSuffix="" trendHigherIsBetter={false} info="Suppliers with a Disruption Probability Score (DPS) of 50 or above. DPS is a 12-month probabilistic estimate of operational disruption, combining delivery trends, financial stress, event exposure, and resiliency scores." />
       </div>
 
       <div className="grid-32">
         {/* Risk Signal Analysis */}
         <div className="card">
-          <h2>Risk Signal Analysis</h2>
+          <h2>Risk Signal Analysis <InfoTip text="12-month trend in portfolio-wide risk signals — credit downgrades, ESG flags, and operational alerts. Identifies acceleration patterns before they become disruptions." /></h2>
           <div className="card-sub">Suppliers sorted by composite risk indicators</div>
           <div className="list" style={{ marginTop: 0 }}>
             {suppliers
@@ -666,7 +676,7 @@ function AnalystDashboard() {
 
         {/* Risk Distribution + ESG */}
         <div className="card">
-          <h2>Risk Distribution</h2>
+          <h2>Risk Distribution <InfoTip text="Analyst view of risk distribution across the portfolio. Sparklines show individual risk score trajectories to surface rapidly deteriorating suppliers." /></h2>
           <div className="card-sub">Portfolio breakdown by risk band</div>
 
           <div style={{ display: "flex", justifyContent: "center", margin: "16px 0 8px" }}>

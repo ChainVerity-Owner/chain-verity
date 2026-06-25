@@ -5,6 +5,7 @@ import { calcDPS, trendLabel, buildDE, buildPM, buildOCF, getRec } from "@/lib/a
 import { KpiCardV2 } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MiniDonut, LegendDot, HeatBar, Sparkline, TrendPill } from "@/components/ui/Charts";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 export function Analytics() {
   const { simulatedEscalation, platformBenchmarks, currency, clientMode } = useApp();
@@ -61,7 +62,7 @@ export function Analytics() {
       {/* Portfolio Risk Breakdown */}
       <div className="grid-32">
         <div className="card">
-          <h2>Portfolio Risk Breakdown</h2>
+          <h2>Portfolio Risk Breakdown<InfoTip text="Risk scores distributed across all suppliers by tier and category. Concentration of high-risk suppliers and spend-weighted exposure. Drill into any segment to surface the underlying suppliers." width={240} /></h2>
           <div className="card-sub">Disruption probability score (DPS) by supplier</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
             {suppliersAll.slice(0, 7).map((s) => {
@@ -92,7 +93,7 @@ export function Analytics() {
 
         {/* Risk Distribution Donut */}
         <div className="card">
-          <h2>DPS Distribution</h2>
+          <h2>DPS Distribution<InfoTip text="Distribution of Disruption Probability Scores across the portfolio. DPS is a 12-month probabilistic estimate of operational disruption, combining delivery risk, financial stress, event exposure, and resiliency scores." width={240} /></h2>
           <div className="card-sub">Portfolio split by disruption risk band</div>
           <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
             <MiniDonut
@@ -123,7 +124,7 @@ export function Analytics() {
 
       {/* What-If Scenarios */}
       <div className="card">
-        <h2>What-If Scenario Modeling</h2>
+        <h2>What-If Scenario Modeling<InfoTip text="Simulate the effect of specific risk events on portfolio exposure. Model supplier insolvency, tariff escalation, or logistics disruption scenarios and see the cascading impact on total exposure at risk." width={240} /></h2>
         <div className="card-sub">Disruption impact scenarios — not demand forecasting</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 14 }}>
           {scenarioData.map((sc, i) => (
@@ -150,7 +151,7 @@ export function Analytics() {
 
       {/* Industry Benchmarking */}
       <div className="card">
-        <h2>Industry Benchmarking</h2>
+        <h2>Industry Benchmarking<InfoTip text="Compares your portfolio's average risk, DPS, on-time delivery, and ESG scores against industry averages across comparable sectors. Benchmarks are updated quarterly using anonymised aggregate data." width={240} /></h2>
         <div className="card-sub">
           Portfolio performance vs. HVAC sector peers · D&B + S&P Industry Analytics
         </div>
@@ -212,7 +213,7 @@ export function Analytics() {
 
       {/* Portfolio Trend Signals */}
       <div className="card">
-        <h2>Portfolio Trend Signals</h2>
+        <h2>Portfolio Trend Signals<InfoTip text="Month-over-month changes in key portfolio indicators — risk score delta, credit watch count, DPS distribution shift. Leading indicators of supply chain stress before individual events surface." width={240} /></h2>
         <div className="card-sub">Financial trend direction per supplier — trailing 3 years quarterly data</div>
         <div className="table-wrap">
           <table>
@@ -276,7 +277,7 @@ export function Analytics() {
       <div className="card" style={{ borderLeft: "4px solid var(--ok)" }}>
         <div className="row" style={{ marginBottom: 14, alignItems: "flex-start" }}>
           <div>
-            <h2 style={{ margin: 0 }}>Early Detection — Quantified Value</h2>
+            <h2 style={{ margin: 0 }}>Early Detection — Quantified Value<InfoTip text="Estimated financial benefit of early risk detection versus reactive response. Based on average cost-of-disruption data by supplier tier and category, weighted by your portfolio exposure." width={240} /></h2>
             <div className="card-sub">
               {clientMode === "generic"
                 ? "Platform value created through proactive risk identification in this portfolio"

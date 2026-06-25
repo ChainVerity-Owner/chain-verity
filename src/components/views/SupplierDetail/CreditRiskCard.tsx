@@ -38,7 +38,7 @@ export function CreditRiskCard({ supplier }: CreditRiskCardProps) {
     <div className="card">
       <div className="row" style={{ alignItems: "flex-start", marginBottom: 12 }}>
         <div>
-          <h2 style={{ margin: 0 }}>Credit Risk Assessment</h2>
+          <h2 style={{ margin: 0 }}>Credit Risk Assessment <InfoTip text="Third-party credit risk evaluation combining FRISK® score (1–10, lower = higher bankruptcy risk), insolvency probability, credit rating, and payment behaviour. FRISK scores of 1–3 indicate the highest-risk decile — statistically 10× more likely to file for bankruptcy within 12 months." width={260} /></h2>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
             Source: {cr.source} · Updated {cr.lastUpdated}
           </div>
