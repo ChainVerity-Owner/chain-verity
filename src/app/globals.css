@@ -216,6 +216,16 @@ tr:hover td { background: var(--surface-hover); }
 [data-theme="dark"] .callout.warn { border-color: #5c3a00; background: #2d1f00; color: #fbbf24; }
 [data-theme="dark"] .callout.ok { border-color: #1a4731; background: #0d2818; color: #4ade80; }
 [data-theme="dark"] .callout.risk { border-color: #7f1d1d; background: #2d0f0f; color: #fca5a5; }
+
+/* ── AI Analysis modal body ── */
+.ai-analysis-body { font-size: 13px; line-height: 1.75; color: var(--fg); }
+.ai-analysis-body h1, .ai-analysis-body h2 { font-size: 14px; font-weight: 700; margin: 20px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.ai-analysis-body h3 { font-size: 13px; font-weight: 700; margin: 14px 0 4px; }
+.ai-analysis-body p { margin: 0 0 10px; }
+.ai-analysis-body ul, .ai-analysis-body ol { margin: 0 0 10px; padding-left: 18px; }
+.ai-analysis-body li { margin-bottom: 4px; }
+.ai-analysis-body strong { font-weight: 700; color: var(--fg); }
+.ai-analysis-body em { font-style: italic; color: var(--muted); }
 .note { font-size: 12px; color: var(--muted); margin-top: 8px; }
 .mono { font-family: var(--mono); font-size: 12px; }
 .muted { color: var(--muted); }
