@@ -10,24 +10,35 @@
 
 export const revalidate = 3600; // cache for 1 hour
 
-const EUR_USD = 1.08;
+async function fetchEurUsd(): Promise<number> {
+  try {
+    const res = await fetch("https://api.frankfurter.app/latest?from=USD&to=EUR", {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) throw new Error("frankfurter non-200");
+    const data = await res.json();
+    return data.rates?.EUR ?? 1.08;
+  } catch {
+    return 1.08; // fallback if the free API is unavailable
+  }
+}
 
-const SERIES: { id: string; fredId: string; toEUR: (v: number) => number }[] = [
+const SERIES: { id: string; fredId: string; toEUR: (v: number, eurUsd: number) => number }[] = [
   {
     id: "copper",
     fredId: "PCOPPUSDM",
-    toEUR: (v) => Math.round(v / EUR_USD), // USD/t → EUR/t
+    toEUR: (v, r) => Math.round(v * r), // USD/t → EUR/t
   },
   {
     id: "aluminium",
     fredId: "PALUMUSDM",
-    toEUR: (v) => Math.round(v / EUR_USD), // USD/t → EUR/t
+    toEUR: (v, r) => Math.round(v * r), // USD/t → EUR/t
   },
   {
     id: "natural-gas",
     fredId: "PNGASEUUSDM",
     // USD/MMBtu → EUR/MWh: 1 MMBtu = 0.29307 MWh
-    toEUR: (v) => Math.round((v / 0.29307 / EUR_USD) * 10) / 10,
+    toEUR: (v, r) => Math.round((v / 0.29307) * r * 10) / 10,
   },
 ];
 
@@ -50,6 +61,8 @@ export async function GET() {
   }
 
   try {
+    const eurUsd = await fetchEurUsd();
+
     const results = await Promise.all(
       SERIES.map(async ({ id, fredId, toEUR }) => {
         const url =
@@ -66,7 +79,7 @@ export async function GET() {
         const prices = data.observations
           .filter((o) => o.value !== "." && !isNaN(parseFloat(o.value)))
           .slice(0, 9) // 9 most recent months
-          .map((o) => toEUR(parseFloat(o.value)))
+          .map((o) => toEUR(parseFloat(o.value), eurUsd))
           .reverse(); // chronological order for sparklines
 
         if (prices.length < 2) throw new Error(`${fredId}: insufficient data`);
