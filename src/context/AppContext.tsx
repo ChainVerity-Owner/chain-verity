@@ -11,6 +11,7 @@ import {
   CRISIS_ROOMS, CRISIS_ROOMS_US,
   GLOBAL_ALERTS, GLOBAL_ALERTS_US,
   RECOVERY_PROFILES, RECOVERY_PROFILES_US,
+  PLATFORM_INVENTORY_CONSTRAINTS, PLATFORM_INVENTORY_CONSTRAINTS_US,
   CERTIFICATIONS, CERTIFICATIONS_US,
   PRODUCT_LINES, PRODUCT_LINES_US,
   COMMODITIES, COMMODITIES_US,
@@ -46,6 +47,9 @@ export interface RiskThresholds {
   deRatio: number;
 }
 
+// Conservative: flag any gap; Moderate: flag gaps >15d or unqualified alts; Aggressive: only flag gaps >30d with no alt
+export type RiskAppetite = "Conservative" | "Moderate" | "Aggressive";
+
 interface AppContextValue {
   clientMode: ClientMode;
   currency: "$" | "£";
@@ -61,6 +65,8 @@ interface AppContextValue {
   platformCommodities: CommodityPrice[];
   platformAssessments: Assessment[];
   platformBenchmarks: IndustryBenchmark[];
+  platformInventoryBudgetM: number;
+  platformWarehouseAvailableM3: number;
   route: Route;
   params: Record<string, string>;
   suppliersTab: "governed" | "raw";
@@ -72,6 +78,8 @@ interface AppContextValue {
   contractStatuses: Record<string, string>;
   notificationSettings: Record<string, boolean>;
   riskThresholds: RiskThresholds;
+  riskAppetite: RiskAppetite;
+  setRiskAppetite: (appetite: RiskAppetite) => void;
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: (open: boolean) => void;
   customSuppliers: Supplier[];
@@ -147,6 +155,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const platformCommodities = clientMode === "wb" ? COMMODITIES : COMMODITIES_US;
   const platformAssessments = clientMode === "wb" ? ASSESSMENTS : ASSESSMENTS_US;
   const platformBenchmarks = clientMode === "wb" ? BENCHMARKS : BENCHMARKS_US;
+  const platformInventoryConstraints = clientMode === "wb" ? PLATFORM_INVENTORY_CONSTRAINTS : PLATFORM_INVENTORY_CONSTRAINTS_US;
   const initial = parseHash();
   const [route, setRouteState] = useState<Route>(initial.route);
   const [params, setParams] = useState<Record<string, string>>(initial.params);
@@ -155,7 +164,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [simulatedEscalation, setSimulatedEscalationState] = useState<Record<string, boolean>>({});
   const [modal, setModal] = useState<ModalState>({ open: false, title: "", sub: "", body: null });
   const [darkMode, setDarkMode] = useState(() => {
-    try { return localStorage.getItem("cv_dark_mode") === "true"; } catch { return false; }
+    try {
+      const saved = localStorage.getItem("cv_dark_mode");
+      if (saved !== null) return saved === "true";
+      return readClientMode() === "wb";
+    } catch { return false; }
   });
   const [role, setRoleState] = useState<AppRole>(() => {
     try {
@@ -203,6 +216,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     currentRatio: 1.0,
     deRatio: 1.5,
   });
+  const [riskAppetite, setRiskAppetiteState] = useState<RiskAppetite>(() => {
+    try { return (localStorage.getItem("cv_risk_appetite") as RiskAppetite) || "Moderate"; } catch { return "Moderate"; }
+  });
+  const setRiskAppetite = useCallback((appetite: RiskAppetite) => {
+    setRiskAppetiteState(appetite);
+    try { localStorage.setItem("cv_risk_appetite", appetite); } catch {}
+  }, []);
 
   const setRoute = useCallback((newRoute: Route, newParams: Record<string, string> = {}) => {
     setHistory((prev) => [...prev, { route, params }]);
@@ -322,9 +342,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       platformEvents, platformShipments, platformContracts, platformCrisisRooms, platformAlerts,
       platformRecoveryProfiles, platformCertifications, platformProductLines,
       platformCommodities, platformAssessments, platformBenchmarks,
+      platformInventoryBudgetM: platformInventoryConstraints.inventoryBudgetM,
+      platformWarehouseAvailableM3: platformInventoryConstraints.warehouseAvailableM3,
       route, params, suppliersTab, simulatedEscalation, modal,
       role, darkMode, dismissedAlerts, crisisActionOverrides, contractStatuses,
-      notificationSettings, riskThresholds,
+      notificationSettings, riskThresholds, riskAppetite, setRiskAppetite,
       mobileSidebarOpen, setMobileSidebarOpen,
       customSuppliers, addSupplier, addSuppliers, deleteSupplier,
       archivedIds, archiveSupplier, unarchiveSupplier,
