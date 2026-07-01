@@ -69,6 +69,7 @@ body {
 
 /* ── Brand ── */
 .brand { padding: 16px 14px 14px; border-bottom: 1px solid #1a2640; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
+.brand-logo { height: 28px; width: auto; display: block; }
 .sidebar-close { display: none; }
 .brand-lockup { display: flex; align-items: center; gap: 10px; }
 .brand-cv {
@@ -481,7 +482,7 @@ tr:hover td { background: var(--surface-hover); }
   border-radius: var(--radius) var(--radius) 0 0;
 }
 .kpi-v2-label { font-size: 10.5px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
-.kpi-v2-value { font-size: 34px; font-weight: 800; margin: 6px 0 2px; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; font-family: var(--mono); }
+.kpi-v2-value { font-size: 34px; font-weight: 800; margin: 6px 0 2px; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
 .kpi-v2-footer { display: flex; align-items: center; gap: 7px; margin-top: 6px; flex-wrap: wrap; }
 .kpi-v2-sub { font-size: 11px; color: var(--muted); }
 

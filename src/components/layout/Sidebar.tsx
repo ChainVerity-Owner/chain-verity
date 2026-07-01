@@ -70,13 +70,7 @@ export function Sidebar() {
   return (
     <aside className={`sidebar ${mobileSidebarOpen ? "mobile-open" : ""}`}>
       <div className="brand">
-        <div className="brand-lockup">
-          <div className="brand-cv">CV</div>
-          <div className="brand-text">
-            <span className="brand-wordmark">Chain Verity</span>
-            <span className="brand-tagline">Supply Intelligence</span>
-          </div>
-        </div>
+        <img src="/logo-dark.png" alt="Chain Verity" className="brand-logo" />
         <button className="sidebar-close" onClick={() => setMobileSidebarOpen(false)} aria-label="Close menu">✕</button>
       </div>
 
