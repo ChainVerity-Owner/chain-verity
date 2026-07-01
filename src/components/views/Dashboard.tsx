@@ -5,6 +5,7 @@ import { KpiCardV2 } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MiniDonut, LegendDot, HeatBar, PulseDot, Sparkline, RiskGauge } from "@/components/ui/Charts";
 import { RECOVERY_PROFILES, RECOVERY_PROFILES_US } from "@/lib/data";
+import { DashboardRiskMap } from "@/components/ui/DashboardRiskMap";
 import { InfoTip } from "@/components/ui/InfoTip";
 
 function alertBadgeClass(type: string) {
@@ -81,36 +82,8 @@ function CFODashboard() {
         </div>
       )}
 
-      {/* Hero Banner */}
-      <div className="hero-card">
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-            <PulseDot color="#f87171" size={10} />
-            <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.85, letterSpacing: ".05em", textTransform: "uppercase" }}>Portfolio Risk Status</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 24, flexWrap: "wrap" }}>
-            <div>
-              <div style={{ fontSize: 36, fontWeight: 900, lineHeight: 1, letterSpacing: "-1px" }}>{currency}{totalExposure.toFixed(1)}M</div>
-              <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>Total supplier exposure at risk</div>
-            </div>
-            <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-              {[
-                { label: "High-risk suppliers", value: String(highRisk.length), color: "#fca5a5" },
-                { label: "Contracts at risk", value: String(contractsAtRisk.length), color: "#fde68a" },
-                { label: "Under observation", value: String(underObservation.length), color: "#c4b5fd" },
-                ...(clientMode === "generic" && tariffExposed.length > 0
-                  ? [{ label: "Tariff-exposed", value: String(tariffExposed.length), color: "#fb923c" }]
-                  : []),
-              ].map(s => (
-                <div key={s.label} style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: s.color }}>{s.value}</div>
-                  <div style={{ fontSize: 11, opacity: 0.75, marginTop: 3 }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Supply network risk map — dashboard hero */}
+      <DashboardRiskMap />
 
       {/* KPI Row */}
       {(() => {
