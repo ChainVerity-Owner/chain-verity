@@ -43,11 +43,12 @@ interface KpiCardV2Props {
   sparkData?: number[];
   icon?: string;            // emoji icon
   info?: string;            // tooltip text
+  severity?: "critical" | "high" | "monitor";
 }
 
-export function KpiCardV2({ label, value, sub, accent, trend, trendSuffix = "%", trendHigherIsBetter, sparkData, icon, info }: KpiCardV2Props) {
+export function KpiCardV2({ label, value, sub, accent, trend, trendSuffix = "%", trendHigherIsBetter, sparkData, icon, info, severity }: KpiCardV2Props) {
   return (
-    <div className="kpi-v2" style={{ "--kpi-accent": accent ?? "var(--accent)" } as React.CSSProperties}>
+    <div className={`kpi-v2${severity ? ` sev-${severity}` : ""}`} style={{ "--kpi-accent": accent ?? "var(--accent)" } as React.CSSProperties}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div className="kpi-v2-label">{label}{info && <InfoTip text={info} width={220} />}</div>
         {icon && <span style={{ fontSize: 18, lineHeight: 1, marginTop: 1 }}>{icon}</span>}

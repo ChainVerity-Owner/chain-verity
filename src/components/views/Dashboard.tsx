@@ -56,8 +56,31 @@ function CFODashboard() {
   const avgRiskNow = avgRiskTrend[avgRiskTrend.length - 1] || 0;
   const avgRiskDelta = avgRiskNow - (avgRiskTrend[0] || 0);
 
+  const profiles = clientMode === "generic" ? RECOVERY_PROFILES_US : RECOVERY_PROFILES;
+  // Find the supplier closest to a line stop (smallest timeToSurvive, no alternative qualified)
+  const criticalSupplier = suppliers
+    .map(s => ({ s, p: profiles[s.id] }))
+    .filter(({ p }) => p && p.timeToSurvive > 0 && !p.alternativeQualified)
+    .sort((a, b) => a.p.timeToSurvive - b.p.timeToSurvive)[0];
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Critical line-stop banner */}
+      {criticalSupplier && criticalSupplier.p.timeToSurvive <= 21 && (
+        <div className="crit-banner" onClick={() => setRoute("recovery")}>
+          <span className="crit-banner-eyebrow">Critical</span>
+          <div className="crit-banner-body">
+            <div className="crit-banner-text">
+              {criticalSupplier.s.name} — production line at risk within {criticalSupplier.p.timeToSurvive} days
+            </div>
+            <div className="crit-banner-sub">
+              Safety stock depleting · TTR {criticalSupplier.p.timeToRecover}d · {currency}{(criticalSupplier.s.exposure ?? 0).toFixed(1)}M exposure
+            </div>
+          </div>
+          <span className="crit-banner-action">View recovery plan →</span>
+        </div>
+      )}
+
       {/* Hero Banner */}
       <div className="hero-card">
         <div style={{ position: "relative", zIndex: 1 }}>
@@ -94,7 +117,6 @@ function CFODashboard() {
         const totalSpend = suppliers.reduce((sum, s) => sum + (s.spend ?? 0), 0);
         const top3Pct = [...suppliers].filter(s => s.spend).sort((a, b) => (b.spend ?? 0) - (a.spend ?? 0)).slice(0, 3).reduce((sum, s) => sum + (s.spend ?? 0), 0) / totalSpend * 100;
         const belowOTD = suppliers.filter(s => s.onTime != null && s.onTime < 95).length;
-        const profiles = clientMode === "generic" ? RECOVERY_PROFILES_US : RECOVERY_PROFILES;
         const haltRisk = suppliers.filter(s => profiles[s.id] && !profiles[s.id].alternativeQualified && (profiles[s.id].timeToRecover - profiles[s.id].timeToSurvive) > 60).length;
         return (
           <div className="grid-4">
@@ -103,6 +125,7 @@ function CFODashboard() {
               sub="Across all active suppliers" accent="var(--risk)"
               trend={-3.2} trendSuffix="%" trendHigherIsBetter={false}
               sparkData={exposureSparkData}
+              severity="high"
               info="Sum of spend-weighted exposure across all active suppliers where a risk event could disrupt supply. Calculated as supplier spend × disruption probability × financial severity multiplier."
             />
             <KpiCardV2
@@ -110,18 +133,21 @@ function CFODashboard() {
               sub="Risk score ≥ 65" accent="var(--risk)"
               trend={1} trendSuffix="" trendHigherIsBetter={false}
               icon="⚠️"
+              severity={highRisk.length >= 2 ? "critical" : highRisk.length > 0 ? "high" : "monitor"}
               info="Suppliers with a composite risk score ≥ 65. Scores combine financial health, credit rating, on-time delivery, ESG flags, and live event exposure. Each warrants an active mitigation plan."
             />
             <KpiCardV2
               label="Contract Value at Risk" value={`${currency}${contractValueAtRisk.toFixed(1)}M`}
               sub="Renegotiation or pending renewal" accent="var(--warn)"
               trend={-8} trendSuffix="%" trendHigherIsBetter={false}
+              severity="high"
               info="Total contract value of agreements currently under renegotiation or pending renewal. Delays in execution leave supply commitments unhedged and expose pricing to spot-market volatility."
             />
             <KpiCardV2
               label="Observation Windows" value={String(underObservation.length)}
               sub="Active 90-day monitoring" accent="var(--info)"
               icon="👁"
+              severity="monitor"
               info="Suppliers placed under active 90-day monitoring due to elevated risk signals. Observation windows trigger weekly check-ins, enhanced data feeds, and escalation protocols if conditions worsen."
             />
             <KpiCardV2
@@ -130,12 +156,14 @@ function CFODashboard() {
               accent={avgRiskNow >= 65 ? "var(--risk)" : avgRiskNow >= 45 ? "var(--warn)" : "var(--ok)"}
               trend={avgRiskDelta} trendSuffix=" pts" trendHigherIsBetter={false}
               sparkData={avgRiskTrend}
+              severity={avgRiskNow >= 65 ? "critical" : avgRiskNow >= 45 ? "high" : "monitor"}
               info="Mean composite risk score across all suppliers, trended over the past 12 months. Rising trend indicates portfolio-wide deterioration. Scores above 65 require CFO-level review."
             />
             <KpiCardV2
               label="Spend Concentration" value={`${top3Pct.toFixed(0)}%`}
               sub={`Top 3 suppliers · ${currency}${totalSpend.toFixed(1)}M total`}
               accent={top3Pct > 60 ? "var(--risk)" : top3Pct > 45 ? "var(--warn)" : "var(--ok)"}
+              severity={top3Pct > 60 ? "high" : "monitor"}
               trend={undefined}
               info="Percentage of total spend flowing through your top 3 suppliers. Concentration above 60% creates systemic risk — a single supplier failure disproportionately impacts the entire supply chain."
             />
@@ -143,6 +171,7 @@ function CFODashboard() {
               label="Below OTD Threshold" value={String(belowOTD)}
               sub="Suppliers below 95% on-time delivery"
               accent={belowOTD >= 3 ? "var(--risk)" : belowOTD > 0 ? "var(--warn)" : "var(--ok)"}
+              severity={belowOTD >= 3 ? "high" : belowOTD > 0 ? "high" : "monitor"}
               trend={undefined}
               icon={belowOTD > 0 ? "📦" : undefined}
               info="Suppliers delivering below the 95% on-time threshold. Persistent delivery underperformance is a leading indicator of operational stress — often preceding financial deterioration by 1–2 quarters."
@@ -151,6 +180,7 @@ function CFODashboard() {
               label="Unhedged Halt Risk" value={String(haltRisk)}
               sub="Solo-sourced · >60d production gap"
               accent={haltRisk >= 2 ? "var(--risk)" : haltRisk > 0 ? "var(--warn)" : "var(--ok)"}
+              severity={haltRisk >= 2 ? "critical" : haltRisk > 0 ? "high" : "monitor"}
               trend={undefined}
               icon={haltRisk > 0 ? "🔴" : undefined}
               info="Solo-sourced suppliers where Time-to-Recover exceeds Time-to-Survive by more than 60 days — meaning a disruption would halt production before an alternative can be qualified. Highest-priority continuity risk."

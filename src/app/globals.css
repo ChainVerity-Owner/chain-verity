@@ -27,8 +27,8 @@
   --text:    #e2e6f0;
   --muted:   #5a6478;
   --line:    #1f2537;
-  --accent:  #3b7ff5;
-  --accent2: #5a96ff;
+  --accent:  #00b8d4;
+  --accent2: #22cfe8;
   --ok:      #1fd060;
   --warn:    #f5a623;
   --risk:    #e84040;
@@ -484,6 +484,47 @@ tr:hover td { background: var(--surface-hover); }
 .kpi-v2-value { font-size: 34px; font-weight: 800; margin: 6px 0 2px; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; font-family: var(--mono); }
 .kpi-v2-footer { display: flex; align-items: center; gap: 7px; margin-top: 6px; flex-wrap: wrap; }
 .kpi-v2-sub { font-size: 11px; color: var(--muted); }
+
+/* ── Dark mode: left stripe + severity sizing ── */
+[data-theme="dark"] .kpi-v2::before {
+  top: 0; bottom: 0; left: 0; right: auto;
+  width: 3px; height: auto;
+  border-radius: var(--radius) 0 0 var(--radius);
+}
+[data-theme="dark"] .kpi-v2 { padding-left: 20px; }
+
+[data-theme="dark"] .kpi-v2.sev-critical { border-color: rgba(232,64,64,.2); }
+[data-theme="dark"] .kpi-v2.sev-critical::before { animation: kpi-stripe-pulse 2s ease-in-out infinite; }
+[data-theme="dark"] .kpi-v2.sev-critical .kpi-v2-value { font-size: 42px; letter-spacing: -.05em; }
+
+[data-theme="dark"] .kpi-v2.sev-high .kpi-v2-value { font-size: 34px; }
+
+[data-theme="dark"] .kpi-v2.sev-monitor .kpi-v2-value { font-size: 26px; color: var(--muted); }
+
+@keyframes kpi-stripe-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+
+/* ── Critical alert banner ── */
+.crit-banner {
+  background: rgba(232,64,64,.07);
+  border: 1px solid rgba(232,64,64,.22);
+  border-left: 3px solid var(--risk);
+  border-radius: var(--radius);
+  padding: 11px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: background 80ms;
+}
+.crit-banner:hover { background: rgba(232,64,64,.11); }
+.crit-banner-eyebrow { font-size: 10px; font-family: var(--mono); letter-spacing: .12em; color: var(--risk); text-transform: uppercase; white-space: nowrap; flex-shrink: 0; }
+.crit-banner-body { flex: 1; min-width: 0; }
+.crit-banner-text { font-size: 13px; font-weight: 500; }
+.crit-banner-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.crit-banner-action { font-size: 12px; font-weight: 600; color: var(--risk); white-space: nowrap; flex-shrink: 0; }
 
 /* ── Hero gradient card ── */
 .hero-card {
