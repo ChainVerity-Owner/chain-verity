@@ -68,7 +68,7 @@ function CFODashboard() {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {/* Critical line-stop banner */}
       {criticalSupplier && criticalSupplier.p.timeToSurvive <= 21 && (
-        <div className="crit-banner" onClick={() => setRoute("recovery")}>
+        <div className="crit-banner" onClick={() => setRoute("supplier", { id: criticalSupplier.s.id })}>
           <span className="crit-banner-eyebrow">Critical</span>
           <div className="crit-banner-body">
             <div className="crit-banner-text">
