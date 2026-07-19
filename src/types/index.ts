@@ -9,8 +9,10 @@ export interface FinancialHealth {
   score: number;                  // 0–100 composite (Z-Score derived)
   dioTrend: number[];             // Days Inventory Outstanding, 4 quarters
   dsoTrend: number[];             // Days Sales Outstanding, 4 quarters
-  dpoCurrent: number;             // Days Payable Outstanding (current)
+  dpoTrend: number[];             // Days Payable Outstanding, 4 quarters (rising = cash stress)
   cccTrend: number[];             // Cash Conversion Cycle = DIO + DSO - DPO
+  grossMarginTrend: number[];     // Gross margin %, 4 quarters (leading indicator of net margin)
+  ocfMarginTrend: number[];       // Operating cash flow / revenue %, 4 quarters
   inventoryGrowthYoY: number;     // decimal e.g. 0.28 = +28%
   revenueGrowthYoY: number;       // decimal e.g. -0.11 = -11%
   netDebtEbitda: number[];        // 8 quarters leverage trajectory
@@ -23,6 +25,20 @@ export interface FinancialRatios {
   debtToEquity: number;
   netProfitMargin: number;
   currentRatio: number;
+  quickRatio?: number;            // (current assets − inventory) / current liabilities
+  grossMargin?: number;           // gross profit / revenue; leading indicator vs net margin
+  operatingCashFlowMargin?: number; // OCF / revenue; detects profit-without-cash situations
+  // Balance-sheet totals (in $M) — used for Altman Z'-Score computation
+  totalAssets?: number;
+  retainedEarnings?: number;
+  annualRevenue?: number;
+  workingCapital?: number;        // current assets − current liabilities (negative = illiquid)
+}
+
+export interface AltmanZResult {
+  z: number;
+  zone: "safe" | "gray" | "distress";
+  insolvencyProbability: number;  // 0–1, logistic-mapped from Z'
 }
 
 export interface CashData {
@@ -106,12 +122,12 @@ export interface ESGProfile {
 
 // ── Resiliency Score (Resilinc R Score equivalent) ────────────────────────────
 export interface ResiliencyScore {
-  overall: number;              // 1–10
-  transparency: number;
-  network: number;
-  continuity: number;
-  performance: number;
-  maturity: number;
+  overall?: number;             // computed by computeResiliency(); do not store
+  transparency: number;         // assessed: data-sharing maturity (1–10)
+  network: number;              // assessed: sub-tier mapping depth (1–10)
+  continuity: number;           // assessed: BCP coverage and test cadence (1–10)
+  performance?: number;         // assessed override; if absent, derived from onTime + qualityPPM
+  maturity: number;             // assessed: SCRM program maturity (1–10)
   lastUpdated: string;
 }
 
@@ -173,8 +189,14 @@ export interface Shipment {
   eta: string;
   delayDays?: number;
   delayRisk: "Low" | "Medium" | "High";
-  status: "On Track" | "Delayed" | "At Risk" | "Customs Hold";
+  status: "On Track" | "Delayed" | "At Risk" | "Customs Hold" | "Delivered";
   value: string;
+  // Present on completed (Delivered) shipments — ISO YYYY-MM-DD strings
+  scheduledDate?: string;
+  actualDeliveryDate?: string;
+  // True when supplier proactively flagged a partial shipment and the customer accepted it;
+  // counts as on-time regardless of actualDeliveryDate.
+  customerAccepted?: boolean;
 }
 
 // ── Crisis Room (Resilinc WarRoom equivalent) ─────────────────────────────────
@@ -240,8 +262,16 @@ export interface Supplier {
   networkNodes?: NetworkNode[];
   parentSupplierIds?: string[];  // tier 2+ parents
   riskHistory?: number[];        // 12-month monthly risk score trend
+  leadTimeTrend?: number[];      // 4-quarter rolling avg lead time in days (oldest → newest)
   countryCode?: string;          // ISO-2 e.g. "DE", "IT", "NL"
   financialHealth?: FinancialHealth;
+  riskForecast?: {
+    score30d: number;       // predicted risk score in 30 days
+    direction: "up" | "down" | "stable";
+    delta: number;          // e.g. +12 or -5
+    confidence: "HIGH" | "MEDIUM" | "LOW";
+    drivers: string[];      // e.g. ["Payment delays detected", "Port congestion EU"]
+  };
 }
 
 export interface Contract {
@@ -254,6 +284,16 @@ export interface Contract {
   value: string;
   status: string;
   autoRenew: boolean;
+  // Negotiation mechanics
+  noticeDays: number;               // days notice required to decline auto-renew or trigger renewal process
+  renegotiationWindowDays: number;  // how far before expiry the renegotiation window opens
+  // Contractual triggers permitting early or mid-term renegotiation
+  financialTriggerClause: boolean;  // allows renegotiation if supplier breaches defined financial thresholds
+  performanceTriggerClause: boolean; // allows renegotiation if OTIF / quality falls below contracted SLA
+  // Key protective terms
+  forceMajeureClause: boolean;
+  priceIndexationClause: boolean;   // pricing linked to commodity or inflation index; auto-adjusts at review dates
+  tariffPassThroughClause: boolean; // tariff changes can be passed through by either party
 }
 
 export interface GlobalAlert {
@@ -290,10 +330,19 @@ export interface RecoveryProfile {
   affectedProductLines: string[];
   alternativeQualified: boolean;
   safetyStockRecommendation: number; // recommended buffer days
+  // Feasibility of reaching the recommendation
+  estimatedStockIncreaseCostM: number; // cost in local currency (M) to acquire additional stock up to recommendation; 0 if already at or above recommendation
+  additionalStorageM3: number;         // warehouse volume (m³) needed to house the additional stock; 0 if no increase needed
   lastReviewed: string;
 }
 
 // ── BOM / Part-level risk ─────────────────────────────────────────────────────
+// sourcingType:
+//   "sole"   — only one supplier exists in the market (patent, unique IP, proprietary tooling)
+//   "single" — only one supplier is currently qualified; alternatives exist in the market
+//   "multi"  — two or more qualified suppliers
+export type SourcingType = "sole" | "single" | "multi";
+
 export interface BOMItem {
   partNumber: string;
   partName: string;
@@ -301,7 +350,7 @@ export interface BOMItem {
   quantity: number;
   unitCost: number;
   leadTimeDays: number;
-  soloSourced: boolean;
+  sourcingType: SourcingType;
   riskScore: number;
 }
 
@@ -384,7 +433,8 @@ export type Route =
   | "commodities"
   | "assessments"
   | "subtier"
-  | "geomap";
+  | "geomap"
+  | "cfo";
 
 export interface RouteState {
   route: Route;

@@ -6,6 +6,89 @@ import { KpiCardV2 } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { HeatBar } from "@/components/ui/Charts";
 import { InfoTip } from "@/components/ui/InfoTip";
+import type { RecoveryProfile, Supplier } from "@/types";
+import type { RiskAppetite } from "@/context/AppContext";
+
+// ── Recovery action thresholds by appetite ─────────────────────────────────────
+const THRESHOLDS: Record<RiskAppetite, { ttrGap: number; stockShortfall: number }> = {
+  Conservative: { ttrGap: 0,  stockShortfall: 0  },
+  Moderate:     { ttrGap: 15, stockShortfall: 10 },
+  Aggressive:   { ttrGap: 30, stockShortfall: 20 },
+};
+
+// Labels and language scaled to appetite — avoids panic language for companies that accept more risk
+const URGENCY_LABEL: Record<RiskAppetite, { critical: string; priority: string; monitor: string }> = {
+  Conservative: { critical: "CRITICAL",       priority: "ACTION REQUIRED", monitor: "REVIEW" },
+  Moderate:     { critical: "HIGH PRIORITY",  priority: "ACTION REQUIRED", monitor: "MONITOR" },
+  Aggressive:   { critical: "MONITOR",        priority: "LOW PRIORITY",    monitor: "FOR AWARENESS" },
+};
+
+const URGENCY_VARIANT: Record<RiskAppetite, { critical: "risk" | "warn" | "obs"; priority: "risk" | "warn" | "obs"; monitor: "risk" | "warn" | "obs" }> = {
+  Conservative: { critical: "risk", priority: "warn", monitor: "obs" },
+  Moderate:     { critical: "warn", priority: "warn", monitor: "obs" },
+  Aggressive:   { critical: "obs",  priority: "obs",  monitor: "obs" },
+};
+
+interface RecoveryAction {
+  title: string;
+  desc: string;
+  urgency: "critical" | "priority" | "monitor";
+  action: string;
+  supplierId: string;
+}
+
+function generateActions(
+  profiles: [string, RecoveryProfile][],
+  suppliers: Supplier[],
+  appetite: RiskAppetite,
+): RecoveryAction[] {
+  const { ttrGap: gapThreshold, stockShortfall: stockThreshold } = THRESHOLDS[appetite];
+  const actions: RecoveryAction[] = [];
+
+  for (const [id, p] of profiles) {
+    const s = suppliers.find((x) => x.id === id);
+    if (!s) continue;
+    const gap = p.timeToRecover - p.timeToSurvive;
+    const shortfall = p.safetyStockRecommendation - p.inventoryBufferDays;
+
+    // TTR gap with no qualified alternative — two distinct actions at different urgency tiers
+    if (gap > gapThreshold && !p.alternativeQualified) {
+      const urgency: "critical" | "priority" | "monitor" =
+        gap > gapThreshold + 60 ? "critical" : gap > gapThreshold + 20 ? "priority" : "monitor";
+      const verb = appetite === "Conservative" ? "Immediately increase" : appetite === "Moderate" ? "Increase" : "Review";
+      actions.push({
+        title: `Safety Stock — ${s.name}`,
+        desc: `${verb} safety stock to ${p.safetyStockRecommendation} days. Current buffer (${p.inventoryBufferDays}d) leaves a +${gap}d exposure window with no qualified alternative. Estimated cost: ${s.spend ? `~${(p.estimatedStockIncreaseCostM).toFixed(1)}M` : "TBC"}.`,
+        urgency,
+        action: "Raise PO",
+        supplierId: id,
+      });
+      // Qualification is always a separate, lower-urgency action
+      actions.push({
+        title: `Qualify Alternative — ${s.name}`,
+        desc: `No qualified backup exists. TTR of ${p.timeToRecover}d vs TTS of ${p.timeToSurvive}d leaves a +${gap}d gap. ${appetite === "Conservative" ? "Initiate qualification immediately." : appetite === "Moderate" ? "Begin qualification process." : "Identify and assess candidates."}`,
+        urgency: urgency === "critical" ? "priority" : "monitor",
+        action: "Start Qualification",
+        supplierId: id,
+      });
+    }
+
+    // Safety stock shortfall below threshold (without the no-alt condition)
+    if (shortfall > stockThreshold && p.alternativeQualified) {
+      actions.push({
+        title: `Buffer Review — ${s.name}`,
+        desc: `Current stock (${p.inventoryBufferDays}d) is ${shortfall}d below the ${p.safetyStockRecommendation}d recommendation. ${appetite === "Aggressive" ? "No immediate action required — qualified alternative exists." : "Review PO schedule to build toward recommendation."}`,
+        urgency: "monitor",
+        action: "Review PO Schedule",
+        supplierId: id,
+      });
+    }
+  }
+
+  // Sort: critical → priority → monitor, then by gap size descending
+  const order = { critical: 0, priority: 1, monitor: 2 };
+  return actions.sort((a, b) => order[a.urgency] - order[b.urgency]).slice(0, 6);
+}
 
 function riskColor(days: number, threshold: number) {
   if (days <= threshold * 0.4) return "var(--risk)";
@@ -14,7 +97,7 @@ function riskColor(days: number, threshold: number) {
 }
 
 export function RecoveryIntelligence() {
-  const { setRoute, platformRecoveryProfiles, platformProductLines, currency } = useApp();
+  const { setRoute, platformRecoveryProfiles, platformProductLines, platformInventoryBudgetM, platformWarehouseAvailableM3, riskAppetite, currency } = useApp();
   const suppliers = useSuppliers();
   const [selectedLine, setSelectedLine] = useState(platformProductLines[0]?.id ?? "");
 
@@ -22,11 +105,19 @@ export function RecoveryIntelligence() {
   const minTTS = profiles.length ? Math.min(...profiles.map(([, p]) => p.timeToSurvive)) : 0;
   const maxTTR = profiles.length ? Math.max(...profiles.map(([, p]) => p.timeToRecover)) : 0;
   const soloSourced = platformProductLines.flatMap((pl) =>
-    pl.bomItems.filter((b) => b.soloSourced)
+    pl.bomItems.filter((b) => b.sourcingType !== "multi")
   ).length;
   const unqualifiedAlt = profiles.filter(([, p]) => !p.alternativeQualified).length;
 
   const selectedProductLine = platformProductLines.find((pl) => pl.id === selectedLine) ?? platformProductLines[0];
+
+  const recoveryActions = generateActions(profiles, suppliers, riskAppetite);
+
+  // Aggregate cost and storage needed to bring all suppliers to recommended safety stock level
+  const totalStockCostM   = profiles.reduce((a, [, p]) => a + p.estimatedStockIncreaseCostM, 0);
+  const totalStorageM3    = profiles.reduce((a, [, p]) => a + p.additionalStorageM3, 0);
+  const budgetFeasible    = totalStockCostM <= platformInventoryBudgetM;
+  const storageFeasible   = totalStorageM3  <= platformWarehouseAvailableM3;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -47,9 +138,9 @@ export function RecoveryIntelligence() {
           icon="🔄"
         />
         <KpiCardV2
-          label="Solo-Sourced Parts"
+          label="Sole / Single-Sourced"
           value={String(soloSourced)}
-          sub="Single supplier dependency"
+          sub="No or one qualified supplier"
           accent="var(--risk)"
           icon="🔗"
         />
@@ -60,6 +151,44 @@ export function RecoveryIntelligence() {
           accent="var(--warn)"
           icon="⚠️"
         />
+      </div>
+
+      {/* Inventory feasibility banner */}
+      <div className="card" style={{ padding: "14px 18px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <span style={{ fontWeight: 700, fontSize: 13 }}>Safety Stock Feasibility</span>
+            <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>
+              Cost and space to bring all suppliers to recommended buffer levels
+            </span>
+          </div>
+          <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>Total investment needed</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: budgetFeasible ? "var(--ok)" : "var(--risk)" }}>
+                {currency}{totalStockCostM.toFixed(1)}M
+              </div>
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>of {currency}{platformInventoryBudgetM.toFixed(1)}M available</div>
+            </div>
+            <div style={{ width: 1, background: "var(--line)" }} />
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>Warehouse space needed</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: storageFeasible ? "var(--ok)" : "var(--risk)" }}>
+                {totalStorageM3}m³
+              </div>
+              <div style={{ fontSize: 11, color: "var(--muted)" }}>of {platformWarehouseAvailableM3}m³ available</div>
+            </div>
+            <div style={{ width: 1, background: "var(--line)" }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, justifyContent: "center" }}>
+              <Badge variant={budgetFeasible ? "ok" : "risk"}>
+                {budgetFeasible ? "Cash feasible" : "Exceeds cash budget"}
+              </Badge>
+              <Badge variant={storageFeasible ? "ok" : "risk"}>
+                {storageFeasible ? "Space feasible" : "Exceeds warehouse capacity"}
+              </Badge>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* TTR / TTS table */}
@@ -162,11 +291,14 @@ export function RecoveryIntelligence() {
                         </span>
                         {p.safetyStockRecommendation >
                           p.inventoryBufferDays && (
-                          <div
-                            className="muted"
-                            style={{ fontSize: 10, color: "var(--warn)" }}
-                          >
-                            ⚠ increase needed
+                          <div style={{ marginTop: 3 }}>
+                            <div style={{ fontSize: 10, color: "var(--warn)", fontWeight: 600 }}>
+                              ⚠ increase needed
+                            </div>
+                            <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 1 }}>
+                              {currency}{p.estimatedStockIncreaseCostM.toFixed(1)}M
+                              {p.additionalStorageM3 > 0 && ` · ${p.additionalStorageM3}m³`}
+                            </div>
                           </div>
                         )}
                       </td>
@@ -237,18 +369,18 @@ export function RecoveryIntelligence() {
             <b style={{ fontSize: 13 }}>{selectedProductLine.bomItems.length}</b>
           </div>
           <div>
-            <span className="muted" style={{ fontSize: 12 }}>Solo-sourced: </span>
+            <span className="muted" style={{ fontSize: 12 }}>Sole/single-sourced: </span>
             <b
               style={{
                 fontSize: 13,
                 color:
-                  selectedProductLine.bomItems.filter((b) => b.soloSourced)
+                  selectedProductLine.bomItems.filter((b) => b.sourcingType !== "multi")
                     .length > 0
                     ? "var(--risk)"
                     : "var(--ok)",
               }}
             >
-              {selectedProductLine.bomItems.filter((b) => b.soloSourced).length}
+              {selectedProductLine.bomItems.filter((b) => b.sourcingType !== "multi").length}
             </b>
           </div>
         </div>
@@ -263,7 +395,7 @@ export function RecoveryIntelligence() {
                 <th>Qty</th>
                 <th>Unit Cost</th>
                 <th>Lead Time</th>
-                <th>Solo-Sourced</th>
+                <th>Sourcing</th>
                 <th>Part Risk</th>
               </tr>
             </thead>
@@ -278,7 +410,7 @@ export function RecoveryIntelligence() {
                     <tr
                       key={item.partNumber}
                       style={
-                        item.soloSourced
+                        item.sourcingType !== "multi"
                           ? { background: "rgba(220,38,38,.04)" }
                           : undefined
                       }
@@ -288,20 +420,6 @@ export function RecoveryIntelligence() {
                       </td>
                       <td style={{ fontWeight: 600, fontSize: 13 }}>
                         {item.partName}
-                        {item.soloSourced && (
-                          <span
-                            style={{
-                              marginLeft: 6,
-                              fontSize: 10,
-                              background: "rgba(220,38,38,.12)",
-                              color: "var(--risk)",
-                              borderRadius: 4,
-                              padding: "1px 5px",
-                            }}
-                          >
-                            SOLE SOURCE
-                          </span>
-                        )}
                       </td>
                       <td>
                         {supplier ? (
@@ -324,24 +442,21 @@ export function RecoveryIntelligence() {
                       <td>{item.quantity}</td>
                       <td>€{item.unitCost.toFixed(2)}</td>
                       <td>
-                        <span
-                          style={{
-                            color:
-                              item.leadTimeDays > 60
-                                ? "var(--risk)"
-                                : item.leadTimeDays > 30
-                                ? "var(--warn)"
-                                : "inherit",
-                            fontWeight: 600,
-                          }}
-                        >
+                        <span style={{
+                          fontWeight: 600,
+                          color: item.leadTimeDays > 60 ? "var(--risk)" : item.leadTimeDays > 30 ? "var(--warn)" : "inherit",
+                        }}>
                           {item.leadTimeDays}d
                         </span>
                       </td>
                       <td>
-                        <Badge variant={item.soloSourced ? "risk" : "ok"}>
-                          {item.soloSourced ? "Yes" : "No"}
-                        </Badge>
+                        {item.sourcingType === "sole" ? (
+                          <Badge variant="risk">Sole</Badge>
+                        ) : item.sourcingType === "single" ? (
+                          <Badge variant="warn">Single</Badge>
+                        ) : (
+                          <Badge variant="ok">Multi</Badge>
+                        )}
                       </td>
                       <td>
                         <div
@@ -384,67 +499,70 @@ export function RecoveryIntelligence() {
 
       {/* Recovery actions */}
       <div className="card">
-        <h2>Recommended Recovery Actions<InfoTip text="Recovery actions generated from current risk posture, inventory buffers, and supplier resilience scores. Actions are prioritised by impact-to-effort ratio and aligned with product line criticality." width={240} /></h2>
-        <div className="card-sub">
-          AI-generated playbook based on TTR gaps and solo-sourced parts
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
+          <h2 style={{ margin: 0 }}>
+            Recommended Recovery Actions
+            <InfoTip text="Actions are generated from TTR gaps, safety stock shortfalls, and sourcing posture — filtered and prioritised according to your organisation's risk appetite. Change appetite in Settings." width={260} />
+          </h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span className="muted" style={{ fontSize: 12 }}>Risk appetite:</span>
+            <Badge variant={riskAppetite === "Conservative" ? "risk" : riskAppetite === "Moderate" ? "warn" : "ok"}>
+              {riskAppetite}
+            </Badge>
+          </div>
         </div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 12,
-            marginTop: 14,
-          }}
-        >
-          {[
-            {
-              title: "Emergency Safety Stock",
-              desc: "Increase SIT Group safety stock to 45 days. TTR gap of +72 days creates a critical exposure window.",
-              urgency: "risk" as const,
-              action: "Raise PO",
-            },
-            {
-              title: "Qualify Alternative Supplier",
-              desc: "Initiate qualification for Georg Fischer alternative — Aliaxis Group (NL) identified as viable. Lead time: 45 days.",
-              urgency: "warn" as const,
-              action: "Start Qualification",
-            },
-            {
-              title: "Dual-Source Ebm-papst",
-              desc: "Fan motor EBM-X3 is sole-sourced with 55-day lead time. Papst competitor ebm (UK) can be onboarded in 30 days.",
-              urgency: "warn" as const,
-              action: "Initiate Audit",
-            },
-          ].map((rec, i) => (
-            <div
-              key={i}
-              style={{
-                border: "1px solid var(--line)",
-                borderRadius: 12,
-                padding: 14,
-                background: "var(--surface)",
-              }}
-            >
-              <Badge variant={rec.urgency} style={{ marginBottom: 8 }}>
-                {rec.urgency === "risk" ? "CRITICAL" : "ACTION REQUIRED"}
-              </Badge>
-              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
-                {rec.title}
-              </div>
-              <div
-                className="muted"
-                style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 12 }}
-              >
-                {rec.desc}
-              </div>
-              <button className="btn primary" style={{ fontSize: 12 }}>
-                {rec.action}
-              </button>
+        <div className="card-sub" style={{ marginBottom: 14 }}>
+          {riskAppetite === "Conservative"
+            ? "Showing all gaps — any TTR gap or stock shortfall is flagged."
+            : riskAppetite === "Moderate"
+            ? "Showing gaps >15 days and shortfalls >10 days."
+            : "Showing only critical gaps >30 days with no qualified alternative."}
+        </div>
+
+        {recoveryActions.length === 0 ? (
+          <div style={{ padding: "24px 0", textAlign: "center" }}>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>No actions required</div>
+            <div className="muted" style={{ fontSize: 12 }}>
+              All TTR gaps and stock shortfalls are within your {riskAppetite.toLowerCase()} risk appetite thresholds.
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 12 }}>
+            {recoveryActions.map((rec, i) => (
+              <div
+                key={i}
+                style={{
+                  border: "1px solid var(--line)",
+                  borderRadius: 12,
+                  padding: 14,
+                  background: "var(--surface)",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <Badge variant={URGENCY_VARIANT[riskAppetite][rec.urgency]} style={{ marginBottom: 8, alignSelf: "flex-start" }}>
+                  {URGENCY_LABEL[riskAppetite][rec.urgency]}
+                </Badge>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>{rec.title}</div>
+                <div className="muted" style={{ fontSize: 12, lineHeight: 1.5, marginBottom: 12, flex: 1 }}>
+                  {rec.desc}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn primary" style={{ fontSize: 12 }}>{rec.action}</button>
+                  <button
+                    className="btn"
+                    style={{ fontSize: 12 }}
+                    onClick={() => setRoute("supplier", { id: rec.supplierId })}
+                  >
+                    View Supplier
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="note" style={{ marginTop: 12 }}>
-          Recovery recommendations powered by Chain Verity AI · calibrated against recovery profiles and BOM lead times.
+          Actions calibrated to <b>{riskAppetite}</b> risk appetite · adjust in Settings to surface more or fewer actions.
         </div>
       </div>
     </div>

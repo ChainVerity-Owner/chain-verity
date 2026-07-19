@@ -1,6 +1,7 @@
 "use client";
 
 import { Supplier } from "@/types";
+import { computeAltmanZ } from "@/lib/analytics";
 import { Badge } from "@/components/ui/Badge";
 import { InfoTip } from "@/components/ui/InfoTip";
 
@@ -27,11 +28,16 @@ function paymentVariant(p: string) {
   return "ok" as const;
 }
 
+const zoneColor = { safe: "var(--ok)", gray: "var(--warn)", distress: "var(--risk)" } as const;
+const zoneLabel = { safe: "Safe zone", gray: "Gray zone", distress: "Distress zone" } as const;
+
 export function CreditRiskCard({ supplier }: CreditRiskCardProps) {
   const { creditRisk: cr } = supplier;
   if (!cr) return null;
 
+  const altman = computeAltmanZ(supplier);
   const insolvencyPct = (cr.insolvencyProbability * 100).toFixed(1);
+  const derivedPct = altman ? (altman.insolvencyProbability * 100).toFixed(1) : null;
   const friskBarWidth = (cr.friskScore / 10) * 100;
 
   return (
@@ -91,10 +97,49 @@ export function CreditRiskCard({ supplier }: CreditRiskCardProps) {
           <b style={{ fontSize: 12 }}>{cr.source}</b>
         </div>
       </div>
+      {altman && (
+        <div style={{ marginTop: 16, padding: "12px 14px", background: "var(--surface)", borderRadius: 8, border: "1px solid var(--line)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ fontWeight: 700, fontSize: 13 }}>Altman Z&#x2032;-Score</span>
+            <InfoTip text="Altman Z'-Score (1995 private-firm variant): Z' = 0.717·(Working Capital/Assets) + 0.847·(Retained Earnings/Assets) + 3.107·(EBIT/Assets) + 0.420·(Book Equity/Liabilities) + 0.998·(Revenue/Assets). Safe zone: Z' > 2.9 · Gray zone: 1.23–2.9 · Distress: < 1.23. Insolvency probability is logistic-mapped from Z', calibrated to Altman's empirical zone boundaries. EBIT approximated as net income ÷ 0.75 (25% effective tax rate)." width={280} />
+            <Badge variant={altman.zone === "safe" ? "ok" : altman.zone === "gray" ? "warn" : "risk"} style={{ fontSize: 11 }}>
+              {zoneLabel[altman.zone]}
+            </Badge>
+          </div>
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+            <div>
+              <div className="muted" style={{ fontSize: 11, marginBottom: 2 }}>Z&#x2032; Score</div>
+              <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: "-.03em", color: zoneColor[altman.zone] }}>{altman.z.toFixed(2)}</div>
+            </div>
+            <div>
+              <div className="muted" style={{ fontSize: 11, marginBottom: 2 }}>Derived insolvency probability</div>
+              <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: "-.03em", color: zoneColor[altman.zone] }}>{derivedPct}%</div>
+              {derivedPct !== insolvencyPct && (
+                <div className="muted" style={{ fontSize: 10, marginTop: 2 }}>{cr.source} attributes {insolvencyPct}%</div>
+              )}
+            </div>
+            <div style={{ flex: 1, minWidth: 160 }}>
+              <div className="muted" style={{ fontSize: 11, marginBottom: 6 }}>Zone scale</div>
+              <div style={{ position: "relative", height: 10, borderRadius: 5, background: "linear-gradient(to right, var(--risk) 0%, var(--warn) 40%, var(--ok) 100%)" }}>
+                {/* Marker at current Z', clamped to 0–5 range for display */}
+                <div style={{
+                  position: "absolute", top: -3, width: 4, height: 16, borderRadius: 2,
+                  background: "var(--text)", transform: "translateX(-50%)",
+                  left: `${Math.min(98, Math.max(2, (altman.z / 5) * 100))}%`,
+                }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, marginTop: 4, color: "var(--muted)" }}>
+                <span>0 · Distress</span><span>1.23</span><span>2.9</span><span>5+</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="note">
         FRISK® score methodology: financial statement ratios + bond agency ratings + crowdsourced financial professional sentiment.
         96% accuracy for predicting public company bankruptcy within 12 months (CreditRiskMonitor methodology).
         Insolvency probability sourced from Coface DRA where applicable.
+        {altman && " Altman Z'-Score computed from balance-sheet data; EBIT approximated from net margin."}
       </div>
     </div>
   );

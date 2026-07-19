@@ -122,6 +122,55 @@ export function Analytics() {
         </div>
       </div>
 
+      {/* Financial Risk Distribution — FRISK tiers */}
+      {(() => {
+        const withCredit = suppliersAll.filter(s => s.creditRisk);
+        const highBankruptcy = withCredit.filter(s => s.creditRisk!.friskScore <= 3);
+        const modBankruptcy  = withCredit.filter(s => s.creditRisk!.friskScore >= 4 && s.creditRisk!.friskScore <= 6);
+        const lowBankruptcy  = withCredit.filter(s => s.creditRisk!.friskScore >= 7);
+        const tiers = [
+          { label: "High Bankruptcy Risk", range: "FRISK 1–3", suppliers: highBankruptcy, color: "var(--risk)", bg: "rgba(220,38,38,.06)", border: "rgba(220,38,38,.2)" },
+          { label: "Moderate Risk",        range: "FRISK 4–6", suppliers: modBankruptcy,  color: "var(--warn)", bg: "rgba(217,119,6,.06)",  border: "rgba(217,119,6,.2)"  },
+          { label: "Low Risk",             range: "FRISK 7–10", suppliers: lowBankruptcy,  color: "var(--ok)",  bg: "rgba(22,163,74,.06)",  border: "rgba(22,163,74,.2)"  },
+        ];
+        return (
+          <div className="card">
+            <h2>Financial Risk Distribution <InfoTip text="Suppliers grouped by FRISK® score tier. FRISK 1–3: highest-risk decile, statistically 10× more likely to file for bankruptcy within 12 months. FRISK 4–6: moderate risk requiring active monitoring. FRISK 7–10: financially stable." width={260} /></h2>
+            <div className="card-sub">Supplier count and names by FRISK® bankruptcy risk tier</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 14 }}>
+              {tiers.map(tier => (
+                <div key={tier.label} style={{ background: tier.bg, border: `1px solid ${tier.border}`, borderRadius: 12, padding: "14px 16px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: tier.color, textTransform: "uppercase", letterSpacing: ".05em" }}>{tier.label}</div>
+                      <div className="muted" style={{ fontSize: 11 }}>{tier.range}</div>
+                    </div>
+                    <div style={{ fontSize: 28, fontWeight: 900, color: tier.color, letterSpacing: "-.03em" }}>{tier.suppliers.length}</div>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 3, background: "var(--line)", marginBottom: 10 }}>
+                    <div style={{ height: "100%", borderRadius: 3, background: tier.color, width: `${withCredit.length ? (tier.suppliers.length / withCredit.length) * 100 : 0}%`, transition: "width .3s" }} />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {tier.suppliers.map(s => (
+                      <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: 12, fontWeight: 600 }}>{s.name}</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: tier.color }}>FRISK {s.creditRisk!.friskScore}</span>
+                      </div>
+                    ))}
+                    {tier.suppliers.length === 0 && (
+                      <span className="muted" style={{ fontSize: 11, fontStyle: "italic" }}>No suppliers in this tier</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="note" style={{ marginTop: 10 }}>
+              FRISK® scores sourced from CreditRiskMonitor and Coface DRA. Scores reflect probability of bankruptcy within 12 months; updated daily from public filings and credit bureau data.
+            </div>
+          </div>
+        );
+      })()}
+
       {/* What-If Scenarios */}
       <div className="card">
         <h2>What-If Scenario Modeling<InfoTip text="Simulate the effect of specific risk events on portfolio exposure. Model supplier insolvency, tariff escalation, or logistics disruption scenarios and see the cascading impact on total exposure at risk." width={240} /></h2>
