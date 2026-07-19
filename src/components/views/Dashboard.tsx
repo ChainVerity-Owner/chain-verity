@@ -401,7 +401,7 @@ function CFODashboard() {
       {/* Alerts Feed */}
       <div className="card">
         <div className="row" style={{ marginBottom: 12 }}>
-          <h2 style={{ margin: 0 }}>Recent Alerts <InfoTip text="Real-time signal feed from financial data providers, logistics networks, and regulatory trackers. Alerts are prioritised by potential supply impact." /></h2>
+          <h2 style={{ margin: 0 }}>Recent Alerts <InfoTip text="Real-time signal feed from financial data providers, logistics networks, and regulatory trackers. Alerts are prioritized by potential supply impact." /></h2>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <PulseDot color="var(--risk)" />
             <span style={{ fontSize: 12, color: "var(--muted)" }}>{platformAlerts.length} active</span>
@@ -502,7 +502,7 @@ function ProcurementDashboard() {
       </div>
 
       <div className="grid-4">
-        <KpiCardV2 label="Contract Renewals Due" value={String(renewalsDue.length)} sub="Within 90 days" accent="var(--warn)" trend={2} trendSuffix="" trendHigherIsBetter={false} icon="📄" info="Contracts expiring within the next 90 days. Early engagement prevents auto-renewal on unfavourable terms and creates leverage for renegotiation — especially critical where no alternative supplier is qualified." />
+        <KpiCardV2 label="Contract Renewals Due" value={String(renewalsDue.length)} sub="Within 90 days" accent="var(--warn)" trend={2} trendSuffix="" trendHigherIsBetter={false} icon="📄" info="Contracts expiring within the next 90 days. Early engagement prevents auto-renewal on unfavorable terms and creates leverage for renegotiation — especially critical where no alternative supplier is qualified." />
         <KpiCardV2 label="On-Time Rate <95%" value={String(lowOnTime.length)} sub="Suppliers below threshold" accent="var(--warn)" icon="⏱" info="Suppliers currently delivering below the 95% on-time delivery benchmark. Persistent OTD shortfalls increase safety stock requirements and are correlated with downstream operational risk." />
         <KpiCardV2 label="Active Crisis Rooms" value={String(openCrisis.length)} sub="Requiring action" accent="var(--risk)" icon="🚨" info="Open Crisis Rooms with unresolved actions. Each room represents an active supply disruption being managed — track completion of mitigation steps and escalation status." />
         <KpiCardV2 label="Shipments at Risk" value={String(atRiskShipments.length)} sub="Delayed or customs hold" accent="var(--risk)" trend={-1} trendSuffix="" trendHigherIsBetter={false} info="In-transit shipments currently flagged as Delayed, At Risk, or held at customs. Sourced from project44 carrier telemetry. Each at-risk shipment may require expedite or alternative routing." />

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useApp, useSuppliers } from "@/context/AppContext";
-import { buildCR, buildDE, buildPM, buildOCF, buildEB, calcDPS } from "@/lib/analytics";
+import { buildCR, buildDE, buildPM, buildOCF, buildEB, calcDPS, computeLeadTimeDrift, LEAD_TIME_BASELINE } from "@/lib/analytics";
 import { getRec } from "@/lib/analytics";
 import { KpiCard } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -224,7 +224,8 @@ function FinancialHealthCard({ fh, supplierName }: { fh: import("@/types").Finan
 // ── Working Capital Stress Panel ──────────────────────────────────────────────
 function WorkingCapitalCard({ fh }: { fh: import("@/types").FinancialHealth }) {
   const quarters = ["Q1", "Q2", "Q3", "Q4"];
-  const maxVal = Math.max(...fh.dioTrend, ...fh.dsoTrend, fh.dpoCurrent + 10);
+  const dpoLatest = fh.dpoTrend[fh.dpoTrend.length - 1];
+  const maxVal = Math.max(...fh.dioTrend, ...fh.dsoTrend, dpoLatest + 10);
 
   function Bar({ value, color, label }: { value: number; color: string; label: string }) {
     const pct = Math.round((value / maxVal) * 100);
@@ -257,7 +258,7 @@ function WorkingCapitalCard({ fh }: { fh: import("@/types").FinancialHealth }) {
         {quarters.map((q, i) => {
           const dio = fh.dioTrend[i];
           const dso = fh.dsoTrend[i];
-          const dpo = i === fh.dioTrend.length - 1 ? fh.dpoCurrent : Math.round(fh.dpoCurrent * (0.85 + i * 0.05));
+          const dpo = fh.dpoTrend[i] ?? dpoLatest;
           const ccc = fh.cccTrend[i];
           const isLatest = i === quarters.length - 1;
           return (
@@ -917,49 +918,77 @@ export function SupplierDetail() {
             </div>
           )}
 
-          {/* BOM — sole-sourced critical parts from this supplier */}
+          {/* BOM — single- and sole-sourced critical parts from this supplier */}
           {(() => {
             const criticalParts = platformProductLines.flatMap((pl) =>
               pl.bomItems
-                .filter((b) => b.supplierId === s.id && b.soloSourced)
+                .filter((b) => b.supplierId === s.id && b.sourcingType !== "multi")
                 .map((b) => ({ ...b, productLine: pl.name }))
             );
             if (criticalParts.length === 0) return null;
             const annualRisk = criticalParts.reduce((sum, b) => sum + b.unitCost * b.quantity * 1000, 0);
+            const ltDrift = computeLeadTimeDrift(s);
+            const ltBaseline = LEAD_TIME_BASELINE[s.region ?? "EU"] ?? LEAD_TIME_BASELINE.EU;
+            const hasSole = criticalParts.some((b) => b.sourcingType === "sole");
+            const hasSingle = criticalParts.some((b) => b.sourcingType === "single");
+            const cardTitle = hasSole && hasSingle ? "Sole & Single-Sourced Critical Parts"
+              : hasSole ? "Sole-Sourced Critical Parts"
+              : "Single-Sourced Critical Parts";
+            const cardSub = hasSole
+              ? "Sole-sourced parts have no market alternative — qualification is not possible, only design substitution. Single-sourced parts have one qualified supplier; alternatives exist and can be qualified."
+              : "Only one supplier is currently qualified for these components. Alternative suppliers exist in the market and can be qualified.";
             return (
               <div className="card" style={{ borderLeft: "3px solid var(--risk)" }}>
                 <div className="row" style={{ marginBottom: 8 }}>
                   <div>
-                    <h2 style={{ margin: 0 }}>⚠ Sole-Sourced Critical Parts</h2>
-                    <div className="card-sub">No qualified alternative supplier exists for these components.</div>
+                    <h2 style={{ margin: 0 }}>⚠ {cardTitle}</h2>
+                    <div className="card-sub">{cardSub}</div>
                   </div>
                   <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: 18, fontWeight: 800, color: "var(--risk)" }}>${(annualRisk / 1e6).toFixed(1)}M</div>
                     <div className="muted" style={{ fontSize: 11 }}>est. annual parts value</div>
                   </div>
                 </div>
+                {ltDrift?.worsening && (
+                  <div style={{ background: "color-mix(in srgb, var(--warn) 12%, transparent)", border: "1px solid color-mix(in srgb, var(--warn) 30%, transparent)", borderRadius: 6, padding: "6px 10px", marginBottom: 10, fontSize: 12, color: "var(--warn)", fontWeight: 600 }}>
+                    ↑ Lead time trend +{Math.round(ltDrift.driftPct * 100)}% over last 4 quarters — now {ltDrift.latest}d vs {ltBaseline}d {s.region ?? "EU"} baseline
+                  </div>
+                )}
                 <div className="table-wrap">
                   <table>
                     <thead>
-                      <tr><th>Part #</th><th>Part Name</th><th>Product Line</th><th>Lead Time</th><th>Unit Cost</th><th>Qty/Unit</th></tr>
+                      <tr><th>Part #</th><th>Part Name</th><th>Product Line</th><th>Sourcing</th><th>Lead Time</th><th>Unit Cost</th><th>Qty/Unit</th></tr>
                     </thead>
                     <tbody>
-                      {criticalParts.map((b) => (
-                        <tr key={b.partNumber}>
-                          <td className="mono" style={{ fontSize: 11 }}>{b.partNumber}</td>
-                          <td><b>{b.partName}</b></td>
-                          <td style={{ fontSize: 12, color: "var(--muted)" }}>{b.productLine}</td>
-                          <td style={{ color: b.leadTimeDays > 14 ? "var(--warn)" : "inherit", fontWeight: b.leadTimeDays > 14 ? 700 : 400 }}>
-                            {b.leadTimeDays}d {b.leadTimeDays > 14 ? "⚠" : ""}
-                          </td>
-                          <td>${b.unitCost}</td>
-                          <td>{b.quantity}</td>
-                        </tr>
-                      ))}
+                      {criticalParts.map((b) => {
+                        const aboveBaseline = b.leadTimeDays > ltBaseline;
+                        const ltColor = ltDrift?.worsening && aboveBaseline ? "var(--warn)" : aboveBaseline ? "var(--muted)" : "inherit";
+                        const isSole = b.sourcingType === "sole";
+                        return (
+                          <tr key={b.partNumber}>
+                            <td className="mono" style={{ fontSize: 11 }}>{b.partNumber}</td>
+                            <td><b>{b.partName}</b></td>
+                            <td style={{ fontSize: 12, color: "var(--muted)" }}>{b.productLine}</td>
+                            <td>
+                              <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: isSole ? "color-mix(in srgb, var(--risk) 15%, transparent)" : "color-mix(in srgb, var(--warn) 15%, transparent)", color: isSole ? "var(--risk)" : "var(--warn)" }}
+                                title={isSole ? "No market alternative exists — cannot qualify another supplier" : "One qualified supplier; alternatives exist in the market"}>
+                                {isSole ? "Sole" : "Single"}
+                              </span>
+                            </td>
+                            <td style={{ color: ltColor, fontWeight: aboveBaseline ? 600 : 400 }} title={`${s.region ?? "EU"} peer baseline: ${ltBaseline}d`}>
+                              {b.leadTimeDays}d{ltDrift?.worsening && aboveBaseline ? " ↑" : ""}
+                            </td>
+                            <td>${b.unitCost}</td>
+                            <td>{b.quantity}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
-                <div className="note">Each sole-sourced part is a single point of failure. A disruption to this supplier immediately halts production of the affected lines with no alternative. Qualify a secondary source to eliminate this exposure.</div>
+                <div className="note">
+                  <b>Sole source</b> — no market alternative; requires a design or technology substitution. <b>Single source</b> — one qualified supplier today; alternatives exist and qualification is the mitigation path. Lead times above the {s.region ?? "EU"} peer baseline ({ltBaseline}d) are shown in context — an increasing trend matters more than the absolute figure.
+                </div>
               </div>
             );
           })()}

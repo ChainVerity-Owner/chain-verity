@@ -12,7 +12,7 @@ interface ContractAnalysis {
   keyRisks: { clause: string; risk: string; severity: string }[];
   missingClauses: string[];
   recommendations: string[];
-  favourable: string[];
+  favorable: string[];
 }
 
 function riskLevelVariant(r: string) {
@@ -66,7 +66,7 @@ function ContractAIModal({ contract, onClose }: { contract: import("@/types").Co
         {!result && !loading && (
           <div style={{ textAlign: "center", padding: "24px 0" }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>⚖️</div>
-            <div style={{ fontWeight: 600, marginBottom: 8 }}>Analyse contract for risk clauses</div>
+            <div style={{ fontWeight: 600, marginBottom: 8 }}>Analyze contract for risk clauses</div>
             <div className="muted" style={{ fontSize: 13, marginBottom: 20 }}>
               Claude AI will review this contract for missing clauses, force majeure gaps, pricing risks, and SLA enforcement.
             </div>
@@ -76,7 +76,7 @@ function ContractAIModal({ contract, onClose }: { contract: import("@/types").Co
 
         {loading && (
           <div style={{ textAlign: "center", padding: "32px 0" }}>
-            <div className="muted" style={{ fontSize: 13 }}>Analysing contract clauses…</div>
+            <div className="muted" style={{ fontSize: 13 }}>analyzing contract clauses…</div>
           </div>
         )}
 
@@ -129,11 +129,11 @@ function ContractAIModal({ contract, onClose }: { contract: import("@/types").Co
               </div>
             )}
 
-            {result.favourable.length > 0 && (
+            {result.favorable.length > 0 && (
               <div>
-                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: "var(--ok)" }}>Favourable Clauses</div>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6, color: "var(--ok)" }}>Favorable Clauses</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {result.favourable.map((c, i) => (
+                  {result.favorable.map((c, i) => (
                     <span key={i} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, background: "rgba(22,163,74,.1)", color: "var(--ok)", border: "1px solid rgba(22,163,74,.2)" }}>{c}</span>
                   ))}
                 </div>

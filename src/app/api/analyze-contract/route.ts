@@ -1,14 +1,14 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-const SYSTEM_PROMPT = `You are a senior procurement and legal analyst embedded in the Chain Verity supply chain risk platform. Your role is to analyse supplier contracts and surface risk clauses, gaps, and recommendations for the procurement team at Worcester Bosch.
+const SYSTEM_PROMPT = `You are a senior procurement and legal analyst embedded in the Chain Verity supply chain risk platform. Your role is to analyze supplier contracts and surface risk clauses, gaps, and recommendations for the procurement team at Worcester Bosch.
 
-When analysing a contract, always output a structured JSON response with these exact fields:
+When analyzing a contract, always output a structured JSON response with these exact fields:
 - riskLevel: "Low" | "Medium" | "High" | "Critical"
 - summary: string (2–3 sentence executive summary)
 - keyRisks: array of { clause: string, risk: string, severity: "Low"|"Medium"|"High"|"Critical" }
 - missingClauses: array of strings (clause names that should be present but are absent)
 - recommendations: array of strings (actionable recommendations)
-- favourable: array of strings (clauses that favour Worcester Bosch)
+- favorable: array of strings (clauses that favor Worcester Bosch)
 
 Be concise, specific, and focus on supply chain risk implications. Output valid JSON only.`;
 
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const { contractTitle, contractType, supplierName, expires, value, notes } =
     await request.json();
 
-  const userMessage = `Analyse this contract for supply chain risk:
+  const userMessage = `Analyze this contract for supply chain risk:
 
 Contract: ${contractTitle}
 Type: ${contractType}
@@ -66,7 +66,7 @@ Output JSON only.`;
         keyRisks: [],
         missingClauses: ["Force majeure", "Business continuity", "Price escalation cap"],
         recommendations: ["Manual contract review required."],
-        favourable: [],
+        favorable: [],
       };
     }
 

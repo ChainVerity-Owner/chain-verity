@@ -125,7 +125,14 @@ export const ROLE_USERS_MAP = ROLE_USERS;
 function parseHash(): { route: Route; params: Record<string, string> } {
   if (typeof window === "undefined") return { route: "dashboard", params: {} };
   const hash = window.location.hash.slice(1); // strip leading #
-  if (!hash) return { route: "dashboard", params: {} };
+  if (!hash) {
+    try {
+      const savedRole = localStorage.getItem("cv_role") ?? "CFO";
+      const defaultRoute = savedRole === "CFO" ? "cfo" : "dashboard";
+      if (defaultRoute !== "dashboard") window.location.hash = defaultRoute;
+      return { route: defaultRoute as Route, params: {} };
+    } catch { return { route: "dashboard", params: {} }; }
+  }
   const [routePart, queryPart] = hash.split("?");
   const params: Record<string, string> = {};
   if (queryPart) {

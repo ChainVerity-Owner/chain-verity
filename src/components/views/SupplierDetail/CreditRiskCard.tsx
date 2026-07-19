@@ -44,7 +44,7 @@ export function CreditRiskCard({ supplier }: CreditRiskCardProps) {
     <div className="card">
       <div className="row" style={{ alignItems: "flex-start", marginBottom: 12 }}>
         <div>
-          <h2 style={{ margin: 0 }}>Credit Risk Assessment <InfoTip text="Third-party credit risk evaluation combining FRISK® score (1–10, lower = higher bankruptcy risk), insolvency probability, credit rating, and payment behaviour. FRISK scores of 1–3 indicate the highest-risk decile — statistically 10× more likely to file for bankruptcy within 12 months." width={260} /></h2>
+          <h2 style={{ margin: 0 }}>Credit Risk Assessment <InfoTip text="Third-party credit risk evaluation combining FRISK® score (1–10, lower = higher bankruptcy risk), insolvency probability, credit rating, and payment behavior. FRISK scores of 1–3 indicate the highest-risk decile — statistically 10× more likely to file for bankruptcy within 12 months." width={260} /></h2>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
             Source: {cr.source} · Updated {cr.lastUpdated}
           </div>
@@ -69,7 +69,7 @@ export function CreditRiskCard({ supplier }: CreditRiskCardProps) {
         <div className="box">
           <div className="muted" style={{ fontSize: 11, marginBottom: 4, display: "flex", alignItems: "center" }}>
             Insolvency Probability
-            <InfoTip text="Statistical likelihood (0–100%) that this company becomes insolvent within 12 months. Derived from financial statement analysis, payment behaviour, and credit bureau data. Above 10% warrants immediate review." width={230} />
+            <InfoTip text="Statistical likelihood (0–100%) that this company becomes insolvent within 12 months. Derived from financial statement analysis, payment behavior, and credit bureau data. Above 10% warrants immediate review." width={230} />
             <span style={{ fontSize: 10, marginLeft: 6 }}>(12-month)</span>
           </div>
           <div style={{ fontSize: 28, fontWeight: 900, color: cr.insolvencyProbability > 0.1 ? "var(--risk)" : cr.insolvencyProbability > 0.05 ? "var(--warn)" : "var(--ok)", letterSpacing: "-.03em" }}>

@@ -32,15 +32,25 @@ const APPETITE_OPTIONS: { value: "Conservative" | "Moderate" | "Aggressive"; lab
   },
 ];
 
-const DATA_SOURCES = [
-  { name: "SAP S/4HANA", type: "ERP", status: "Active", lastSync: "4 minutes ago", recordCount: "1,247 supplier records" },
-  { name: "Dun & Bradstreet", type: "Credit Risk", status: "Active", lastSync: "6 hours ago", recordCount: "50 suppliers monitored" },
-  { name: "Reuters / Dow Jones", type: "News Intelligence", status: "Active", lastSync: "12 minutes ago", recordCount: "400+ languages" },
-  { name: "GLEIF", type: "Legal Entity", status: "Active", lastSync: "1 day ago", recordCount: "50 LEIs verified" },
-  { name: "UN Comtrade", type: "Trade Data", status: "Active", lastSync: "3 days ago", recordCount: "Tariff & trade flows" },
-  { name: "EU EONET / GDACS", type: "Disruption Events", status: "Active", lastSync: "Real-time", recordCount: "150+ risk categories" },
-  { name: "Companies House", type: "Corporate Registry", status: "Active", lastSync: "2 days ago", recordCount: "UK entity verification" },
-  { name: "Manual CSV Import", type: "Supplementary", status: "Active", lastSync: "5 days ago", recordCount: "8 custom fields" },
+type Provenance = "Proprietary" | "Licensed" | "Public" | "Customer";
+
+const PROVENANCE_STYLE: Record<Provenance, { color: string; desc: string }> = {
+  Proprietary: { color: "#0e7490", desc: "Chain Verity's own models and signal engine — not available elsewhere" },
+  Licensed:    { color: "#4f46e5", desc: "Commercially licensed third-party data, redistributed under agreement" },
+  Public:      { color: "#16a34a", desc: "Open / government data, independently refreshed and validated" },
+  Customer:    { color: "#a16207", desc: "Your own systems and uploads — never shared outside your tenant" },
+};
+
+const DATA_SOURCES: { name: string; type: string; status: string; lastSync: string; recordCount: string; provenance: Provenance }[] = [
+  { name: "Chain Verity Signal Engine", type: "Risk Signals", status: "Active", lastSync: "Real-time", recordCount: "38 proprietary indicators", provenance: "Proprietary" },
+  { name: "SAP S/4HANA", type: "ERP", status: "Active", lastSync: "4 minutes ago", recordCount: "1,247 supplier records", provenance: "Customer" },
+  { name: "Dun & Bradstreet", type: "Credit Risk", status: "Active", lastSync: "6 hours ago", recordCount: "50 suppliers monitored", provenance: "Licensed" },
+  { name: "Reuters / Dow Jones", type: "News Intelligence", status: "Active", lastSync: "12 minutes ago", recordCount: "400+ languages", provenance: "Licensed" },
+  { name: "GLEIF", type: "Legal Entity", status: "Active", lastSync: "1 day ago", recordCount: "50 LEIs verified", provenance: "Public" },
+  { name: "UN Comtrade", type: "Trade Data", status: "Active", lastSync: "3 days ago", recordCount: "Tariff & trade flows", provenance: "Public" },
+  { name: "EU EONET / GDACS", type: "Disruption Events", status: "Active", lastSync: "Real-time", recordCount: "150+ risk categories", provenance: "Public" },
+  { name: "Companies House", type: "Corporate Registry", status: "Active", lastSync: "2 days ago", recordCount: "UK entity verification", provenance: "Public" },
+  { name: "Manual CSV Import", type: "Supplementary", status: "Active", lastSync: "5 days ago", recordCount: "8 custom fields", provenance: "Customer" },
 ];
 
 export function Settings() {
@@ -53,7 +63,7 @@ export function Settings() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
           <div>
             <h2 style={{ marginBottom: 2 }}>Connected Data Sources <InfoTip text="Live integrations feeding supplier data into Chain Verity. Each source is polled on its own cadence; a red status means the last pull failed or is overdue. Reconnect from the Manage Integrations panel." /></h2>
-            <div className="card-sub">8 of 8 sources active · Last full sync 12 min ago</div>
+            <div className="card-sub">9 of 9 sources active · Last full sync 12 min ago</div>
           </div>
           <button
             className="btn"
@@ -113,6 +123,20 @@ export function Settings() {
                 >
                   {src.type}
                 </span>
+                <span
+                  title={PROVENANCE_STYLE[src.provenance].desc}
+                  style={{
+                    fontSize: 10,
+                    color: PROVENANCE_STYLE[src.provenance].color,
+                    background: `color-mix(in srgb, ${PROVENANCE_STYLE[src.provenance].color} 10%, var(--surface))`,
+                    border: `1px solid color-mix(in srgb, ${PROVENANCE_STYLE[src.provenance].color} 30%, transparent)`,
+                    borderRadius: 4,
+                    padding: "2px 6px",
+                    fontWeight: 700,
+                  }}
+                >
+                  {src.provenance}
+                </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <span className="muted" style={{ fontSize: 11 }}>Last sync: {src.lastSync}</span>
@@ -130,6 +154,14 @@ export function Settings() {
                   {src.recordCount}
                 </span>
               </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 16, marginTop: 12, flexWrap: "wrap" }}>
+          {(Object.keys(PROVENANCE_STYLE) as Provenance[]).map((p) => (
+            <div key={p} style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: 11 }}>
+              <span style={{ fontWeight: 700, color: PROVENANCE_STYLE[p].color }}>{p}</span>
+              <span className="muted">{PROVENANCE_STYLE[p].desc}</span>
             </div>
           ))}
         </div>
@@ -288,16 +320,16 @@ export function Settings() {
 
       {/* ERP Integration Hub */}
       <div className="card">
-        <h2>ERP Integration Hub <InfoTip text="Connect Chain Verity to your enterprise systems. Connected sources push spend, PO, and vendor master data automatically. Pending sources require OAuth or API key setup — click the connector card to begin." /></h2>
-        <div className="card-sub">Connect Chain Verity to your enterprise systems for automated data synchronization</div>
+        <h2>ERP Integration Hub <InfoTip text="Connect Chain Verity to your enterprise systems. Connected sources push spend, PO, and vendor master data in — and bidirectional connectors accept actions out: decisions approved in Chain Verity write back as PO amendments, workflow tasks, and budget releases in the source system." /></h2>
+        <div className="card-sub">Bidirectional integration — data in, approved actions written back out</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginTop: 16 }}>
           {[
-            { name: "SAP S/4HANA", logo: "🏢", status: "Connected", desc: "Procurement orders, spend data, vendor master", color: "var(--ok)" },
-            { name: "Coupa", logo: "🛒", status: "Connected", desc: "PO management, invoicing, contract data", color: "var(--ok)" },
-            { name: "Oracle Fusion", logo: "🔶", status: "Pending", desc: "ERP financial data, supplier payments", color: "var(--warn)" },
-            { name: "SAP Ariba", logo: "🌐", status: "Not Connected", desc: "Sourcing, supplier qualification, contracts", color: "var(--muted)" },
-            { name: "Salesforce", logo: "☁️", status: "Not Connected", desc: "Supplier contact management, CRM sync", color: "var(--muted)" },
-            { name: "Microsoft Teams", logo: "💬", status: "Connected", desc: "Crisis room notifications, alert escalation", color: "var(--ok)" },
+            { name: "SAP S/4HANA", logo: "🏢", status: "Connected", desc: "Procurement orders, spend data, vendor master", color: "var(--ok)", direction: "Data in · Actions out" },
+            { name: "Coupa", logo: "🛒", status: "Connected", desc: "PO management, invoicing, contract data", color: "var(--ok)", direction: "Data in · Actions out" },
+            { name: "Oracle Fusion", logo: "🔶", status: "Pending", desc: "ERP financial data, supplier payments", color: "var(--warn)", direction: "Data in" },
+            { name: "SAP Ariba", logo: "🌐", status: "Not Connected", desc: "Sourcing, supplier qualification, contracts", color: "var(--muted)", direction: "Data in · Actions out" },
+            { name: "Salesforce", logo: "☁️", status: "Not Connected", desc: "Supplier contact management, CRM sync", color: "var(--muted)", direction: "Data in" },
+            { name: "Microsoft Teams", logo: "💬", status: "Connected", desc: "Crisis room notifications, alert escalation", color: "var(--ok)", direction: "Actions out" },
           ].map((erp, i) => (
             <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 16, background: "var(--surface)", display: "flex", gap: 14, alignItems: "flex-start" }}>
               <div style={{ fontSize: 28, flexShrink: 0 }}>{erp.logo}</div>
@@ -309,12 +341,21 @@ export function Settings() {
                   </span>
                 </div>
                 <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>{erp.desc}</div>
+                <span style={{
+                  display: "inline-block", marginTop: 6, fontSize: 10, fontWeight: 700,
+                  color: "var(--accent)", background: "color-mix(in srgb, var(--accent) 10%, var(--surface))",
+                  border: "1px solid color-mix(in srgb, var(--accent) 25%, transparent)",
+                  borderRadius: 4, padding: "2px 7px",
+                }}>
+                  {erp.direction}
+                </span>
               </div>
             </div>
           ))}
         </div>
         <div className="note" style={{ marginTop: 10 }}>
           ERP integrations use OAuth 2.0 and REST APIs. Data is encrypted in transit (TLS 1.3) and at rest (AES-256).
+          Decisions approved in a briefing write back to the connected system automatically — see the execution log on the CFO/CPO Briefing.
         </div>
       </div>
 

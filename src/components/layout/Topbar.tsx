@@ -21,6 +21,8 @@ const pageMeta: Record<string, { title: string; sub: string }> = {
   geomap: { title: "Risk Map", sub: "Global supplier footprint · Risk concentration · Live disruption events." },
   esg: { title: "ESG & Compliance", sub: "Environmental, Social, Governance · Regulatory compliance · Certification tracking." },
   crisis: { title: "Crisis Response", sub: "WarRoom-style incident management · Impact tracking · Action coordination." },
+  cfo: { title: "CFO Briefing", sub: "Executive summary · Decision queue · Risk horizon." },
+  recovery: { title: "Recovery Intelligence", sub: "Time-to-survive · Time-to-recover · Safety stock · Qualification tracking." },
 };
 
 export function Topbar() {
@@ -127,7 +129,7 @@ export function Topbar() {
         </select>
         <button className="btn" onClick={() => setRoute("alerts")}>
           Alerts{" "}
-          <span className="alert-badge" style={{ background: undismissedCount > 0 ? undefined : "var(--muted)" }}>
+          <span className="alert-badge" suppressHydrationWarning style={{ background: undismissedCount > 0 ? undefined : "var(--muted)" }}>
             {undismissedCount}
           </span>
         </button>

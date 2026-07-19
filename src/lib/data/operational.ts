@@ -1,26 +1,62 @@
 import { RecoveryProfile, Certification, ProductLine, CommodityPrice, Assessment, IndustryBenchmark, DataFeed } from "@/types";
 
 // ── Recovery Profiles ─────────────────────────────────────────────────────────
+// estimatedStockIncreaseCostM: cost in local currency (M) to acquire additional inventory to reach the safety stock recommendation
+//   Derived from: (safetyStockRecommendation - inventoryBufferDays) × daily spend (annualSpend / 365)
+//   Zero when buffer already meets or exceeds recommendation.
+// additionalStorageM3: warehouse volume (m³) required for that additional stock, based on typical unit volume and daily consumption rate
+//   Zero for logistics/3PL suppliers where no physical goods are held.
+
 export const RECOVERY_PROFILES: Record<string, RecoveryProfile> = {
-  sit: { inventoryBufferDays: 18, timeToSurvive: 18, timeToRecover: 90, criticalComponents: ["Gas Control Valve GCV-2200", "Thermocouple TC-44", "SIT Gas Valve Block"], affectedProductLines: ["Greenstar 4 Life", "Greenstar 8000 Life"], alternativeQualified: false, safetyStockRecommendation: 45, lastReviewed: "Oct 2025" },
-  ebm: { inventoryBufferDays: 45, timeToSurvive: 45, timeToRecover: 120, criticalComponents: ["Flue Fan FF-3000", "Variable Speed Fan VSF-2", "Air Pressure Switch APS-14"], affectedProductLines: ["Greenstar 4 Life", "Greenstar 8000 Life", "Greenwave Heat Pump"], alternativeQualified: false, safetyStockRecommendation: 60, lastReviewed: "Sep 2025" },
-  aal: { inventoryBufferDays: 22, timeToSurvive: 22, timeToRecover: 75, criticalComponents: ["Flow Control Valve FCV-110", "Brass Manifold BM-44", "Pressure Regulator PR-22"], affectedProductLines: ["Greenstar 4 Life", "Greenwave Heat Pump"], alternativeQualified: false, safetyStockRecommendation: 35, lastReviewed: "Oct 2025" },
-  gru: { inventoryBufferDays: 60, timeToSurvive: 60, timeToRecover: 90, criticalComponents: ["Circulation Pump UP15-14", "Pump Head Assembly PHA-3"], affectedProductLines: ["Greenstar 4 Life", "Greenstar 8000 Life"], alternativeQualified: true, safetyStockRecommendation: 45, lastReviewed: "Aug 2025" },
-  dan: { inventoryBufferDays: 35, timeToSurvive: 35, timeToRecover: 60, criticalComponents: ["3-Port Zone Valve ZV-3", "Motorised Valve MV-22", "DHW Valve Assembly"], affectedProductLines: ["Greenstar 8000 Life", "Greenwave Heat Pump"], alternativeQualified: true, safetyStockRecommendation: 30, lastReviewed: "Sep 2025" },
-  gfp: { inventoryBufferDays: 12, timeToSurvive: 12, timeToRecover: 45, criticalComponents: ["Stainless Pipe Fitting PF-220", "Compression Fitting CF-18", "Threaded Elbow TE-15"], affectedProductLines: ["Greenstar 4 Life", "Greenstar 8000 Life", "Greenwave Heat Pump"], alternativeQualified: false, safetyStockRecommendation: 30, lastReviewed: "Oct 2025" },
-  dbs: { inventoryBufferDays: 7, timeToSurvive: 7, timeToRecover: 14, criticalComponents: ["EU-UK Freight Lanes", "Customs Brokerage", "Cross-Channel Logistics"], affectedProductLines: ["All product lines"], alternativeQualified: true, safetyStockRecommendation: 14, lastReviewed: "Oct 2025" },
-  sen: { inventoryBufferDays: 28, timeToSurvive: 28, timeToRecover: 55, criticalComponents: ["Flame Sensor FS-44", "Pressure Sensor PS-12", "Temperature Sensor TS-88"], affectedProductLines: ["Greenstar 4 Life", "Greenstar 8000 Life"], alternativeQualified: false, safetyStockRecommendation: 40, lastReviewed: "Sep 2025" },
+  // sit: 27d increase × £49k/day ≈ £1.3M | gas valves ~0.5L × ~500/day × 27d ≈ 7m³
+  sit: { inventoryBufferDays: 18, timeToSurvive: 18, timeToRecover: 90, criticalComponents: ["Gas Control Valve GCV-2200", "Thermocouple TC-44", "SIT Gas Valve Block"], affectedProductLines: ["Greenstar 4 Life", "Greenstar 8000 Life"], alternativeQualified: false, safetyStockRecommendation: 45, estimatedStockIncreaseCostM: 1.3, additionalStorageM3: 7, lastReviewed: "Oct 2025" },
+  // ebm: 15d increase × £33k/day ≈ £0.5M | fans ~8L × ~200/day × 15d ≈ 24m³ (bulky)
+  ebm: { inventoryBufferDays: 45, timeToSurvive: 45, timeToRecover: 120, criticalComponents: ["Flue Fan FF-3000", "Variable Speed Fan VSF-2", "Air Pressure Switch APS-14"], affectedProductLines: ["Greenstar 4 Life", "Greenstar 8000 Life", "Greenwave Heat Pump"], alternativeQualified: false, safetyStockRecommendation: 60, estimatedStockIncreaseCostM: 0.5, additionalStorageM3: 24, lastReviewed: "Sep 2025" },
+  // aal: 13d increase × £22k/day ≈ £0.3M | fittings ~0.1L × ~800/day × 13d ≈ 1m³
+  aal: { inventoryBufferDays: 22, timeToSurvive: 22, timeToRecover: 75, criticalComponents: ["Flow Control Valve FCV-110", "Brass Manifold BM-44", "Pressure Regulator PR-22"], affectedProductLines: ["Greenstar 4 Life", "Greenwave Heat Pump"], alternativeQualified: false, safetyStockRecommendation: 35, estimatedStockIncreaseCostM: 0.3, additionalStorageM3: 1, lastReviewed: "Oct 2025" },
+  // gru: buffer (60d) already exceeds recommendation (45d) — no increase needed
+  gru: { inventoryBufferDays: 60, timeToSurvive: 60, timeToRecover: 90, criticalComponents: ["Circulation Pump UP15-14", "Pump Head Assembly PHA-3"], affectedProductLines: ["Greenstar 4 Life", "Greenstar 8000 Life"], alternativeQualified: true, safetyStockRecommendation: 45, estimatedStockIncreaseCostM: 0, additionalStorageM3: 0, lastReviewed: "Aug 2025" },
+  // dan: buffer (35d) already exceeds recommendation (30d) — no increase needed
+  dan: { inventoryBufferDays: 35, timeToSurvive: 35, timeToRecover: 60, criticalComponents: ["3-Port Zone Valve ZV-3", "Motorised Valve MV-22", "DHW Valve Assembly"], affectedProductLines: ["Greenstar 8000 Life", "Greenwave Heat Pump"], alternativeQualified: true, safetyStockRecommendation: 30, estimatedStockIncreaseCostM: 0, additionalStorageM3: 0, lastReviewed: "Sep 2025" },
+  // gfp: 18d increase × £11k/day ≈ £0.2M | fittings ~0.05L × ~1200/day × 18d ≈ 1m³
+  gfp: { inventoryBufferDays: 12, timeToSurvive: 12, timeToRecover: 45, criticalComponents: ["Stainless Pipe Fitting PF-220", "Compression Fitting CF-18", "Threaded Elbow TE-15"], affectedProductLines: ["Greenstar 4 Life", "Greenstar 8000 Life", "Greenwave Heat Pump"], alternativeQualified: false, safetyStockRecommendation: 30, estimatedStockIncreaseCostM: 0.2, additionalStorageM3: 1, lastReviewed: "Oct 2025" },
+  // dbs: 7d transit buffer increase — no physical goods held; minimal admin cost only
+  dbs: { inventoryBufferDays: 7, timeToSurvive: 7, timeToRecover: 14, criticalComponents: ["EU-UK Freight Lanes", "Customs Brokerage", "Cross-Channel Logistics"], affectedProductLines: ["All product lines"], alternativeQualified: true, safetyStockRecommendation: 14, estimatedStockIncreaseCostM: 0.1, additionalStorageM3: 0, lastReviewed: "Oct 2025" },
+  // sen: 12d increase × £16k/day ≈ £0.2M | sensors ~0.2L × ~400/day × 12d ≈ 1m³
+  sen: { inventoryBufferDays: 28, timeToSurvive: 28, timeToRecover: 55, criticalComponents: ["Flame Sensor FS-44", "Pressure Sensor PS-12", "Temperature Sensor TS-88"], affectedProductLines: ["Greenstar 4 Life", "Greenstar 8000 Life"], alternativeQualified: false, safetyStockRecommendation: 40, estimatedStockIncreaseCostM: 0.2, additionalStorageM3: 1, lastReviewed: "Sep 2025" },
+};
+
+// Company-level inventory investment capacity (EU / Worcester Bosch equivalent)
+// inventoryBudgetM: liquid cash currently available for safety stock investment (after working capital commitments)
+// warehouseAvailableM3: unused racked warehouse space currently available across own + 3PL sites
+export const PLATFORM_INVENTORY_CONSTRAINTS = {
+  inventoryBudgetM: 4.8,       // £4.8M available
+  warehouseAvailableM3: 55,    // 55m³ of usable rack space available
 };
 
 export const RECOVERY_PROFILES_US: Record<string, RecoveryProfile> = {
-  flx: { inventoryBufferDays: 22, timeToSurvive: 22, timeToRecover: 120, criticalComponents: ["Control Board CB-3100", "Power Module PM-14", "PCB Sub-Assembly FLX-PCB-44"], affectedProductLines: ["ProControl 2000", "SensorSuite Platform"], alternativeQualified: false, safetyStockRecommendation: 45, lastReviewed: "Oct 2025" },
-  zhp: { inventoryBufferDays: 14, timeToSurvive: 14, timeToRecover: 90, criticalComponents: ["Precision Connector ZHP-CONN-08", "Precision Housing ZHP-PREC-04", "PCB Connector PC-220"], affectedProductLines: ["ProControl 2000", "SensorSuite Platform"], alternativeQualified: false, safetyStockRecommendation: 60, lastReviewed: "Oct 2025" },
-  hay: { inventoryBufferDays: 35, timeToSurvive: 35, timeToRecover: 60, criticalComponents: ["Nickel Alloy Rod HAY-230", "Cobalt Alloy Sheet HAY-188", "High-Temp Alloy Bar HAY-C276"], affectedProductLines: ["FlexDrive Series", "ProControl 2000"], alternativeQualified: true, safetyStockRecommendation: 45, lastReviewed: "Sep 2025" },
-  eme: { inventoryBufferDays: 60, timeToSurvive: 60, timeToRecover: 45, criticalComponents: ["Control Board EMR-CB-3100", "Interface Controller EMR-INT-44"], affectedProductLines: ["ProControl 2000", "SensorSuite Platform"], alternativeQualified: true, safetyStockRecommendation: 30, lastReviewed: "Aug 2025" },
-  phn: { inventoryBufferDays: 45, timeToSurvive: 45, timeToRecover: 60, criticalComponents: ["Hydraulic Module PH-HYD-220", "Seal Assembly PH-SA-14"], affectedProductLines: ["FlexDrive Series"], alternativeQualified: true, safetyStockRecommendation: 30, lastReviewed: "Sep 2025" },
-  hon: { inventoryBufferDays: 28, timeToSurvive: 28, timeToRecover: 55, criticalComponents: ["Multi-Axis Sensor HON-MULTI-88", "Industrial Sensor HON-SENS-12"], affectedProductLines: ["ProControl 2000", "FlexDrive Series", "SensorSuite Platform"], alternativeQualified: false, safetyStockRecommendation: 40, lastReviewed: "Sep 2025" },
-  xpo: { inventoryBufferDays: 7, timeToSurvive: 7, timeToRecover: 14, criticalComponents: ["Midwest Freight Lanes", "Last-mile Delivery Network", "Cross-dock Operations"], affectedProductLines: ["All product lines"], alternativeQualified: true, safetyStockRecommendation: 14, lastReviewed: "Oct 2025" },
-  mog: { inventoryBufferDays: 30, timeToSurvive: 30, timeToRecover: 75, criticalComponents: ["Precision Drive Assembly MOG-DRV-14", "Servo Actuator MOG-SA-08"], affectedProductLines: ["FlexDrive Series"], alternativeQualified: false, safetyStockRecommendation: 35, lastReviewed: "Oct 2025" },
+  // flx: 23d increase × $38k/day ≈ $0.9M | PCBs ~2L × ~300/day × 23d ≈ 14m³
+  flx: { inventoryBufferDays: 22, timeToSurvive: 22, timeToRecover: 120, criticalComponents: ["Control Board CB-3100", "Power Module PM-14", "PCB Sub-Assembly FLX-PCB-44"], affectedProductLines: ["ProControl 2000", "SensorSuite Platform"], alternativeQualified: false, safetyStockRecommendation: 45, estimatedStockIncreaseCostM: 0.9, additionalStorageM3: 14, lastReviewed: "Oct 2025" },
+  // zhp: 46d increase × $14k/day ≈ $0.6M | connectors ~0.05L × ~2000/day × 46d ≈ 5m³
+  zhp: { inventoryBufferDays: 14, timeToSurvive: 14, timeToRecover: 90, criticalComponents: ["Precision Connector ZHP-CONN-08", "Precision Housing ZHP-PREC-04", "PCB Connector PC-220"], affectedProductLines: ["ProControl 2000", "SensorSuite Platform"], alternativeQualified: false, safetyStockRecommendation: 60, estimatedStockIncreaseCostM: 0.6, additionalStorageM3: 5, lastReviewed: "Oct 2025" },
+  // hay: 10d increase × $16k/day ≈ $0.2M | alloy bar stock ~2L × ~200/day × 10d ≈ 4m³ (dense)
+  hay: { inventoryBufferDays: 35, timeToSurvive: 35, timeToRecover: 60, criticalComponents: ["Nickel Alloy Rod HAY-230", "Cobalt Alloy Sheet HAY-188", "High-Temp Alloy Bar HAY-C276"], affectedProductLines: ["FlexDrive Series", "ProControl 2000"], alternativeQualified: true, safetyStockRecommendation: 45, estimatedStockIncreaseCostM: 0.2, additionalStorageM3: 4, lastReviewed: "Sep 2025" },
+  // eme: buffer (60d) already exceeds recommendation (30d) — no increase needed
+  eme: { inventoryBufferDays: 60, timeToSurvive: 60, timeToRecover: 45, criticalComponents: ["Control Board EMR-CB-3100", "Interface Controller EMR-INT-44"], affectedProductLines: ["ProControl 2000", "SensorSuite Platform"], alternativeQualified: true, safetyStockRecommendation: 30, estimatedStockIncreaseCostM: 0, additionalStorageM3: 0, lastReviewed: "Aug 2025" },
+  // phn: buffer (45d) already exceeds recommendation (30d) — no increase needed
+  phn: { inventoryBufferDays: 45, timeToSurvive: 45, timeToRecover: 60, criticalComponents: ["Hydraulic Module PH-HYD-220", "Seal Assembly PH-SA-14"], affectedProductLines: ["FlexDrive Series"], alternativeQualified: true, safetyStockRecommendation: 30, estimatedStockIncreaseCostM: 0, additionalStorageM3: 0, lastReviewed: "Sep 2025" },
+  // hon: 12d increase × $27k/day ≈ $0.3M | sensors ~0.3L × ~500/day × 12d ≈ 2m³
+  hon: { inventoryBufferDays: 28, timeToSurvive: 28, timeToRecover: 55, criticalComponents: ["Multi-Axis Sensor HON-MULTI-88", "Industrial Sensor HON-SENS-12"], affectedProductLines: ["ProControl 2000", "FlexDrive Series", "SensorSuite Platform"], alternativeQualified: false, safetyStockRecommendation: 40, estimatedStockIncreaseCostM: 0.3, additionalStorageM3: 2, lastReviewed: "Sep 2025" },
+  // xpo: 7d buffer increase — 3PL logistics, no physical goods held; minimal admin cost
+  xpo: { inventoryBufferDays: 7, timeToSurvive: 7, timeToRecover: 14, criticalComponents: ["Midwest Freight Lanes", "Last-mile Delivery Network", "Cross-dock Operations"], affectedProductLines: ["All product lines"], alternativeQualified: true, safetyStockRecommendation: 14, estimatedStockIncreaseCostM: 0.1, additionalStorageM3: 0, lastReviewed: "Oct 2025" },
+  // mog: 5d increase × $25k/day ≈ $0.1M | drive assemblies ~3L × ~100/day × 5d ≈ 2m³
+  mog: { inventoryBufferDays: 30, timeToSurvive: 30, timeToRecover: 75, criticalComponents: ["Precision Drive Assembly MOG-DRV-14", "Servo Actuator MOG-SA-08"], affectedProductLines: ["FlexDrive Series"], alternativeQualified: false, safetyStockRecommendation: 35, estimatedStockIncreaseCostM: 0.1, additionalStorageM3: 2, lastReviewed: "Oct 2025" },
+};
+
+// Company-level inventory investment capacity (US client)
+export const PLATFORM_INVENTORY_CONSTRAINTS_US = {
+  inventoryBudgetM: 6.5,       // $6.5M available
+  warehouseAvailableM3: 38,    // 38m³ of usable rack space available across owned + 3PL sites
 };
 
 // ── Certifications ────────────────────────────────────────────────────────────
@@ -114,32 +150,32 @@ export const PRODUCT_LINES: ProductLine[] = [
   {
     id: "gs4", name: "Greenstar 4 Life", model: "GS4L-24/28/32/36", annualVolume: 85000,
     bomItems: [
-      { partNumber: "GCV-2200", partName: "Gas Control Valve", supplierId: "sit", quantity: 1, unitCost: 42, leadTimeDays: 18, soloSourced: true, riskScore: 64 },
-      { partNumber: "FF-3000", partName: "Flue Fan Assembly", supplierId: "ebm", quantity: 1, unitCost: 38, leadTimeDays: 45, soloSourced: true, riskScore: 41 },
-      { partNumber: "FCV-110", partName: "Flow Control Valve", supplierId: "aal", quantity: 2, unitCost: 28, leadTimeDays: 22, soloSourced: false, riskScore: 76 },
-      { partNumber: "UP15-14", partName: "Circulation Pump", supplierId: "gru", quantity: 1, unitCost: 55, leadTimeDays: 60, soloSourced: false, riskScore: 27 },
-      { partNumber: "FS-44", partName: "Flame Sensor", supplierId: "sen", quantity: 1, unitCost: 18, leadTimeDays: 28, soloSourced: false, riskScore: 54 },
-      { partNumber: "PF-220", partName: "Stainless Pipe Fitting", supplierId: "gfp", quantity: 8, unitCost: 4.5, leadTimeDays: 12, soloSourced: false, riskScore: 48 },
+      { partNumber: "GCV-2200", partName: "Gas Control Valve", supplierId: "sit", quantity: 1, unitCost: 42, leadTimeDays: 18, sourcingType: "single", riskScore: 64 },
+      { partNumber: "FF-3000", partName: "Flue Fan Assembly", supplierId: "ebm", quantity: 1, unitCost: 38, leadTimeDays: 45, sourcingType: "single", riskScore: 41 },
+      { partNumber: "FCV-110", partName: "Flow Control Valve", supplierId: "aal", quantity: 2, unitCost: 28, leadTimeDays: 22, sourcingType: "multi", riskScore: 76 },
+      { partNumber: "UP15-14", partName: "Circulation Pump", supplierId: "gru", quantity: 1, unitCost: 55, leadTimeDays: 60, sourcingType: "multi", riskScore: 27 },
+      { partNumber: "FS-44", partName: "Flame Sensor", supplierId: "sen", quantity: 1, unitCost: 18, leadTimeDays: 28, sourcingType: "multi", riskScore: 54 },
+      { partNumber: "PF-220", partName: "Stainless Pipe Fitting", supplierId: "gfp", quantity: 8, unitCost: 4.5, leadTimeDays: 12, sourcingType: "multi", riskScore: 48 },
     ],
   },
   {
     id: "gs8", name: "Greenstar 8000 Life", model: "GS8L-30/35/40", annualVolume: 42000,
     bomItems: [
-      { partNumber: "GCV-2200", partName: "Gas Control Valve", supplierId: "sit", quantity: 1, unitCost: 48, leadTimeDays: 18, soloSourced: true, riskScore: 64 },
-      { partNumber: "VSF-2", partName: "Variable Speed Fan", supplierId: "ebm", quantity: 1, unitCost: 62, leadTimeDays: 45, soloSourced: true, riskScore: 41 },
-      { partNumber: "ZV-3", partName: "3-Port Zone Valve", supplierId: "dan", quantity: 2, unitCost: 34, leadTimeDays: 35, soloSourced: false, riskScore: 31 },
-      { partNumber: "BM-44", partName: "Brass Manifold", supplierId: "aal", quantity: 1, unitCost: 85, leadTimeDays: 22, soloSourced: false, riskScore: 76 },
-      { partNumber: "PS-12", partName: "Pressure Sensor", supplierId: "sen", quantity: 2, unitCost: 24, leadTimeDays: 28, soloSourced: false, riskScore: 54 },
+      { partNumber: "GCV-2200", partName: "Gas Control Valve", supplierId: "sit", quantity: 1, unitCost: 48, leadTimeDays: 18, sourcingType: "single", riskScore: 64 },
+      { partNumber: "VSF-2", partName: "Variable Speed Fan", supplierId: "ebm", quantity: 1, unitCost: 62, leadTimeDays: 45, sourcingType: "single", riskScore: 41 },
+      { partNumber: "ZV-3", partName: "3-Port Zone Valve", supplierId: "dan", quantity: 2, unitCost: 34, leadTimeDays: 35, sourcingType: "multi", riskScore: 31 },
+      { partNumber: "BM-44", partName: "Brass Manifold", supplierId: "aal", quantity: 1, unitCost: 85, leadTimeDays: 22, sourcingType: "multi", riskScore: 76 },
+      { partNumber: "PS-12", partName: "Pressure Sensor", supplierId: "sen", quantity: 2, unitCost: 24, leadTimeDays: 28, sourcingType: "multi", riskScore: 54 },
     ],
   },
   {
     id: "gwv", name: "Greenwave Heat Pump", model: "GWV-5/8/12/16kW", annualVolume: 18000,
     bomItems: [
-      { partNumber: "MV-22", partName: "Motorised Valve", supplierId: "dan", quantity: 3, unitCost: 44, leadTimeDays: 35, soloSourced: false, riskScore: 31 },
-      { partNumber: "FCV-110", partName: "Flow Control Valve", supplierId: "aal", quantity: 3, unitCost: 28, leadTimeDays: 22, soloSourced: false, riskScore: 76 },
-      { partNumber: "VSF-2", partName: "Variable Speed Fan", supplierId: "ebm", quantity: 2, unitCost: 62, leadTimeDays: 45, soloSourced: true, riskScore: 41 },
-      { partNumber: "CF-18", partName: "Compression Fitting", supplierId: "gfp", quantity: 12, unitCost: 3.8, leadTimeDays: 12, soloSourced: false, riskScore: 48 },
-      { partNumber: "TS-88", partName: "Temperature Sensor", supplierId: "sen", quantity: 4, unitCost: 15, leadTimeDays: 28, soloSourced: false, riskScore: 54 },
+      { partNumber: "MV-22", partName: "Motorised Valve", supplierId: "dan", quantity: 3, unitCost: 44, leadTimeDays: 35, sourcingType: "multi", riskScore: 31 },
+      { partNumber: "FCV-110", partName: "Flow Control Valve", supplierId: "aal", quantity: 3, unitCost: 28, leadTimeDays: 22, sourcingType: "multi", riskScore: 76 },
+      { partNumber: "VSF-2", partName: "Variable Speed Fan", supplierId: "ebm", quantity: 2, unitCost: 62, leadTimeDays: 45, sourcingType: "single", riskScore: 41 },
+      { partNumber: "CF-18", partName: "Compression Fitting", supplierId: "gfp", quantity: 12, unitCost: 3.8, leadTimeDays: 12, sourcingType: "multi", riskScore: 48 },
+      { partNumber: "TS-88", partName: "Temperature Sensor", supplierId: "sen", quantity: 4, unitCost: 15, leadTimeDays: 28, sourcingType: "multi", riskScore: 54 },
     ],
   },
 ];
@@ -148,28 +184,28 @@ export const PRODUCT_LINES_US: ProductLine[] = [
   {
     id: "mpc", name: "ProControl 2000", model: "MPC2000-24/48/96", annualVolume: 28000,
     bomItems: [
-      { partNumber: "EMR-CB-3100", partName: "Control Board Assembly", supplierId: "eme", quantity: 1, unitCost: 185, leadTimeDays: 14, soloSourced: false, riskScore: 24 },
-      { partNumber: "FLX-PCB-44", partName: "PCB Sub-Assembly", supplierId: "flx", quantity: 2, unitCost: 92, leadTimeDays: 16, soloSourced: true, riskScore: 68 },
-      { partNumber: "HON-SENS-12", partName: "Industrial Sensor", supplierId: "hon", quantity: 3, unitCost: 45, leadTimeDays: 10, soloSourced: false, riskScore: 46 },
-      { partNumber: "ZHP-CONN-08", partName: "Precision Connector", supplierId: "zhp", quantity: 8, unitCost: 12, leadTimeDays: 21, soloSourced: true, riskScore: 78 },
+      { partNumber: "EMR-CB-3100", partName: "Control Board Assembly", supplierId: "eme", quantity: 1, unitCost: 185, leadTimeDays: 14, sourcingType: "multi", riskScore: 24 },
+      { partNumber: "FLX-PCB-44", partName: "PCB Sub-Assembly", supplierId: "flx", quantity: 2, unitCost: 92, leadTimeDays: 16, sourcingType: "single", riskScore: 68 },
+      { partNumber: "HON-SENS-12", partName: "Industrial Sensor", supplierId: "hon", quantity: 3, unitCost: 45, leadTimeDays: 10, sourcingType: "multi", riskScore: 46 },
+      { partNumber: "ZHP-CONN-08", partName: "Precision Connector", supplierId: "zhp", quantity: 8, unitCost: 12, leadTimeDays: 21, sourcingType: "sole", riskScore: 78 },
     ],
   },
   {
     id: "mfd", name: "FlexDrive Series", model: "MFD-5/10/25/50HP", annualVolume: 14500,
     bomItems: [
-      { partNumber: "PH-HYD-220", partName: "Hydraulic Module", supplierId: "phn", quantity: 1, unitCost: 340, leadTimeDays: 14, soloSourced: false, riskScore: 29 },
-      { partNumber: "MOG-DRV-14", partName: "Precision Drive Assembly", supplierId: "mog", quantity: 1, unitCost: 480, leadTimeDays: 21, soloSourced: true, riskScore: 36 },
-      { partNumber: "HON-SENS-12", partName: "Motion Sensor", supplierId: "hon", quantity: 2, unitCost: 38, leadTimeDays: 10, soloSourced: false, riskScore: 46 },
-      { partNumber: "FLX-PWR-22", partName: "Power Module Assembly", supplierId: "flx", quantity: 1, unitCost: 125, leadTimeDays: 16, soloSourced: false, riskScore: 68 },
+      { partNumber: "PH-HYD-220", partName: "Hydraulic Module", supplierId: "phn", quantity: 1, unitCost: 340, leadTimeDays: 14, sourcingType: "multi", riskScore: 29 },
+      { partNumber: "MOG-DRV-14", partName: "Precision Drive Assembly", supplierId: "mog", quantity: 1, unitCost: 480, leadTimeDays: 21, sourcingType: "sole", riskScore: 36 },
+      { partNumber: "HON-SENS-12", partName: "Motion Sensor", supplierId: "hon", quantity: 2, unitCost: 38, leadTimeDays: 10, sourcingType: "multi", riskScore: 46 },
+      { partNumber: "FLX-PWR-22", partName: "Power Module Assembly", supplierId: "flx", quantity: 1, unitCost: 125, leadTimeDays: 16, sourcingType: "multi", riskScore: 68 },
     ],
   },
   {
     id: "mss", name: "SensorSuite Platform", model: "MSS-8/16/32 Channel", annualVolume: 42000,
     bomItems: [
-      { partNumber: "HON-MULTI-88", partName: "Multi-Axis Sensor", supplierId: "hon", quantity: 4, unitCost: 62, leadTimeDays: 10, soloSourced: false, riskScore: 46 },
-      { partNumber: "EMR-INT-44", partName: "Interface Controller", supplierId: "eme", quantity: 1, unitCost: 95, leadTimeDays: 14, soloSourced: false, riskScore: 24 },
-      { partNumber: "ZHP-PREC-04", partName: "Precision Housing", supplierId: "zhp", quantity: 4, unitCost: 18, leadTimeDays: 21, soloSourced: false, riskScore: 78 },
-      { partNumber: "FLX-PROC-08", partName: "Processing Board", supplierId: "flx", quantity: 1, unitCost: 145, leadTimeDays: 16, soloSourced: true, riskScore: 68 },
+      { partNumber: "HON-MULTI-88", partName: "Multi-Axis Sensor", supplierId: "hon", quantity: 4, unitCost: 62, leadTimeDays: 10, sourcingType: "multi", riskScore: 46 },
+      { partNumber: "EMR-INT-44", partName: "Interface Controller", supplierId: "eme", quantity: 1, unitCost: 95, leadTimeDays: 14, sourcingType: "multi", riskScore: 24 },
+      { partNumber: "ZHP-PREC-04", partName: "Precision Housing", supplierId: "zhp", quantity: 4, unitCost: 18, leadTimeDays: 21, sourcingType: "multi", riskScore: 78 },
+      { partNumber: "FLX-PROC-08", partName: "Processing Board", supplierId: "flx", quantity: 1, unitCost: 145, leadTimeDays: 16, sourcingType: "single", riskScore: 68 },
     ],
   },
 ];

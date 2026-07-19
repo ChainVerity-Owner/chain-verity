@@ -339,7 +339,58 @@ export function Assessments() {
           ))}
         </div>
         <div className="note" style={{ marginTop: 12 }}>
-          Templates are customisable. Responses are analysed by Chain Verity AI to surface risk flags automatically.
+          Templates are customizable. Responses are analyzed by Chain Verity AI to surface risk flags automatically.
+        </div>
+      </div>
+
+      {/* Supplier Portal */}
+      <div className="card">
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <h2>Supplier Portal <InfoTip text="Suppliers log into their own portal to complete assessments, upload certificates and audit documents, respond to corrective action requests, and keep their site and contact data current. Two-way collaboration — not just outbound questionnaires." width={260} /></h2>
+            <div className="card-sub">Two-way collaboration — supplier-submitted documents, responses, and data updates</div>
+          </div>
+          <button className="btn" style={{ fontSize: 12, whiteSpace: "nowrap", flexShrink: 0 }}>Invite Suppliers</button>
+        </div>
+
+        {/* Adoption stats */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginTop: 14 }}>
+          {[
+            { label: "Portal Active", value: `${Math.max(suppliers.length - 4, 0)}`, sub: `of ${suppliers.length} governed suppliers`, color: "var(--ok)" },
+            { label: "Invited · Pending", value: "3", sub: "Awaiting first login", color: "var(--warn)" },
+            { label: "Docs This Month", value: "27", sub: "Certificates & audit evidence", color: "var(--accent)" },
+            { label: "Open Corrective Actions", value: "4", sub: "Awaiting supplier response", color: "var(--risk)" },
+          ].map((k) => (
+            <div key={k.label} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px", background: "var(--surface)" }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: k.color, fontFamily: "var(--mono)", fontVariantNumeric: "tabular-nums" }}>{k.value}</div>
+              <div style={{ fontWeight: 700, fontSize: 12, marginTop: 4 }}>{k.label}</div>
+              <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{k.sub}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Recent supplier activity */}
+        <div style={{ fontWeight: 700, fontSize: 12, marginTop: 16, marginBottom: 8, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em" }}>
+          Recent supplier activity
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[
+            { who: suppliers[0]?.name ?? "Supplier", what: "Uploaded ISO 14001 recertification (valid through 2028)", when: "2 hours ago", icon: "📄", kind: "Document" },
+            { who: suppliers[1]?.name ?? "Supplier", what: "Responded to corrective action CA-2026-014 — root cause analysis and containment plan attached", when: "Yesterday", icon: "🔧", kind: "Corrective action" },
+            { who: suppliers[2]?.name ?? "Supplier", what: "Updated production site contact and emergency escalation details", when: "2 days ago", icon: "🏭", kind: "Data update" },
+            { who: suppliers[3]?.name ?? "Supplier", what: "Completed Financial Health Self-Assessment (28/28 questions)", when: "3 days ago", icon: "✅", kind: "Assessment" },
+            { who: suppliers[4]?.name ?? "Supplier", what: "Disputed risk flag on question OPS-17 — supporting evidence submitted for review", when: "4 days ago", icon: "⚖️", kind: "Dispute" },
+          ].map((a, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderRadius: 8, background: "var(--surface)", border: "1px solid var(--line)" }}>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>{a.icon}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontWeight: 700, fontSize: 13 }}>{a.who}</span>
+                <span className="muted" style={{ fontSize: 12, marginLeft: 8 }}>{a.what}</span>
+              </div>
+              <Badge variant="muted-b" style={{ fontSize: 10, flexShrink: 0 }}>{a.kind}</Badge>
+              <span className="muted" style={{ fontSize: 11, flexShrink: 0, whiteSpace: "nowrap" }}>{a.when}</span>
+            </div>
+          ))}
         </div>
       </div>
 

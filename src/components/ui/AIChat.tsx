@@ -153,7 +153,7 @@ function buildContext(
         lines.push(`Financials: D/E ${s.ratios.debtToEquity.toFixed(2)} | Net margin ${(s.ratios.netProfitMargin * 100).toFixed(1)}% | Current ratio ${s.ratios.currentRatio.toFixed(2)}`);
       }
       if (s.creditRisk) {
-        lines.push(`Credit: FRISK ${s.creditRisk.friskScore}/10 | Rating ${s.creditRisk.creditRating} | Insolvency 12m ${(s.creditRisk.insolvencyProbability * 100).toFixed(1)}% | Payment behaviour ${s.creditRisk.paymentBehavior}`);
+        lines.push(`Credit: FRISK ${s.creditRisk.friskScore}/10 | Rating ${s.creditRisk.creditRating} | Insolvency 12m ${(s.creditRisk.insolvencyProbability * 100).toFixed(1)}% | Payment behavior ${s.creditRisk.paymentBehavior}`);
       }
       if (s.esg) {
         lines.push(`ESG: Score ${s.esg.score}/100 Grade ${s.esg.grade} | Labor risk ${s.esg.laborRisk} | Environmental ${s.esg.environmentalRisk}`);

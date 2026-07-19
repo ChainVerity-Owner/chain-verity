@@ -329,7 +329,7 @@ export function RecoveryIntelligence() {
       <div className="card">
         <div className="row" style={{ marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
           <div>
-            <h2 style={{ margin: 0 }}>BOM — Part-Level Risk Explorer<InfoTip text="Bill of Materials decomposed to the component level, with each part scored for supply risk. Highlights solo-sourced items, long-lead-time components, and parts from high-risk suppliers. Prioritise safety stock and dual-sourcing investments here." width={260} /></h2>
+            <h2 style={{ margin: 0 }}>BOM — Part-Level Risk Explorer<InfoTip text="Bill of Materials decomposed to the component level, with each part scored for supply risk. Highlights solo-sourced items, long-lead-time components, and parts from high-risk suppliers. Prioritize safety stock and dual-sourcing investments here." width={260} /></h2>
             <div className="card-sub" style={{ marginBottom: 0 }}>
               Bill of Materials risk by product line · solo-sourced parts highlighted
             </div>
@@ -506,7 +506,7 @@ export function RecoveryIntelligence() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 4 }}>
           <h2 style={{ margin: 0 }}>
             Recommended Recovery Actions
-            <InfoTip text="Actions are generated from TTR gaps, safety stock shortfalls, and sourcing posture — filtered and prioritised according to your organisation's risk appetite. Change appetite in Settings." width={260} />
+            <InfoTip text="Actions are generated from TTR gaps, safety stock shortfalls, and sourcing posture — filtered and prioritized according to your organization's risk appetite. Change appetite in Settings." width={260} />
           </h2>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span className="muted" style={{ fontSize: 12 }}>Risk appetite:</span>

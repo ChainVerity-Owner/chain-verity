@@ -471,7 +471,7 @@ export const suppliersDirectory: Supplier[] = [
       lastUpdated: "Q3 2025",
     },
     alerts: [{ id: "al-gfp-1", type: "logistics", text: "Polymer raw material shortage delaying pipe fittings order GFP-2241", date: "2025-09-29" }],
-    riskForecast: { score30d: 58, direction: "up", delta: 7, confidence: "MEDIUM", drivers: ["News: labour dispute reported", "Lead time extending"] },
+    riskForecast: { score30d: 58, direction: "up", delta: 7, confidence: "MEDIUM", drivers: ["News: labor dispute reported", "Lead time extending"] },
   },
   {
     id: "dbs",

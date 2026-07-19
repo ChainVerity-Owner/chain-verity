@@ -372,7 +372,7 @@ export function Analytics() {
             {
               event: "EBM-Papst CSDDD non-compliance identified",
               window: "Before regulatory penalty",
-              action: "Compliance programme co-developed with supplier; audit scheduled",
+              action: "Compliance program co-developed with supplier; audit scheduled",
               exposure: `${currency}2.8M`,
               cost: `${currency}0.2M`,
               net: `${currency}2.6M`,
@@ -402,7 +402,7 @@ export function Analytics() {
           ))}
         </div>
         <div className="note" style={{ marginTop: 10 }}>
-          Exposure mitigated = estimated disruption cost avoided through early action. Intervention cost = safety stock, alternative sourcing, and programme management. Net value = platform ROI for this portfolio.
+          Exposure mitigated = estimated disruption cost avoided through early action. Intervention cost = safety stock, alternative sourcing, and program management. Net value = platform ROI for this portfolio.
         </div>
       </div>
     </div>

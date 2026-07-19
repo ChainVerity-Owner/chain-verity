@@ -94,7 +94,7 @@ export function LiveEvents() {
       <div className="card">
         <div className="row" style={{ alignItems: "flex-start", marginBottom: 12 }}>
           <div>
-            <h2 style={{ margin: 0 }}>Live Disruption Events<InfoTip text="Real-time disruption events from Everstream Analytics — natural disasters, geopolitical events, labour actions, logistics disruptions. Severity reflects the affected suppliers' combined exposure in your portfolio." width={240} /></h2>
+            <h2 style={{ margin: 0 }}>Live Disruption Events<InfoTip text="Real-time disruption events from Everstream Analytics — natural disasters, geopolitical events, labor actions, logistics disruptions. Severity reflects the affected suppliers' combined exposure in your portfolio." width={240} /></h2>
             <div className="card-sub" style={{ marginBottom: 0 }}>
               AI-monitored across 150+ risk categories · 400+ languages · Sourced from media, regulatory, and logistics feeds
             </div>

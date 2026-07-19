@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useApp, useSuppliers } from "@/context/AppContext";
+import { computeResiliency } from "@/lib/analytics";
 import { Badge } from "@/components/ui/Badge";
 import { Sparkline } from "@/components/ui/Charts";
 import { riskStateClass, riskStateLabel } from "@/lib/utils";
@@ -52,7 +53,7 @@ function CompareModal({ ids, onClose }: CompareModalProps) {
     { label: "FRISK Score",        va: a.creditRisk ? String(a.creditRisk.friskScore) : "—", vb: b.creditRisk ? String(b.creditRisk.friskScore) : "—" },
     { label: "Credit Rating",      va: a.creditRisk?.creditRating ?? "—",        vb: b.creditRisk?.creditRating ?? "—" },
     { label: "ESG Score",          va: a.esg ? String(a.esg.score) : "—",        vb: b.esg ? String(b.esg.score) : "—" },
-    { label: "Resiliency Score",   va: a.resiliency ? String(a.resiliency.overall) : "—", vb: b.resiliency ? String(b.resiliency.overall) : "—" },
+    { label: "Resiliency Score",   va: computeResiliency(a)?.toFixed(1) ?? "—", vb: computeResiliency(b)?.toFixed(1) ?? "—" },
     { label: "Risk State",         va: a.riskState ?? "STABLE",                  vb: b.riskState ?? "STABLE" },
   ];
 

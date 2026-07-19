@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Supplier, MCResult } from "@/types";
 import { calcDPS, runMC, topDrivers } from "@/lib/analytics";
+import { RECOVERY_PROFILES, RECOVERY_PROFILES_US } from "@/lib/data";
 import { InfoTip } from "@/components/ui/InfoTip";
 
 interface DPSCardProps {
@@ -11,7 +12,9 @@ interface DPSCardProps {
 
 export function DPSCard({ supplier }: DPSCardProps) {
   const det = calcDPS(supplier);
-  const [mc, setMc] = useState<MCResult>(() => runMC(supplier));
+  const profiles = supplier.region === "US" ? RECOVERY_PROFILES_US : RECOVERY_PROFILES;
+  const recoveryProfile = profiles[supplier.id];
+  const [mc, setMc] = useState<MCResult>(() => runMC(supplier, 5000, recoveryProfile));
   const [iters, setIters] = useState(5000);
 
   // det is the primary score — deterministic, stable, matches the header badge.
@@ -21,7 +24,7 @@ export function DPSCard({ supplier }: DPSCardProps) {
 
   function rerun(iter: number) {
     setIters(iter);
-    setMc(runMC(supplier, iter));
+    setMc(runMC(supplier, iter, recoveryProfile));
   }
 
   return (

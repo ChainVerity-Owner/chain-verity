@@ -18,7 +18,48 @@ interface STNode {
   parentIds: string[]; // IDs of nodes this node supplies into
   note?: string;
   soloSource?: boolean;
+  // Evidence backing this relationship — resolved via NODE_VERIFICATION lookup
+  verification?: "verified" | "corroborated" | "inferred";
+  sources?: string[];
 }
+
+type Verification = NonNullable<STNode["verification"]>;
+
+// Evidence backing each mapped relationship:
+// verified     = confirmed via customs / bill-of-lading shipment records
+// corroborated = 2+ independent sources agree (filings, disclosures, trade data)
+// inferred     = AI-inferred from industry patterns, pending confirmation
+const NODE_VERIFICATION: Record<string, Verification> = {
+  // WB tier 2
+  "t2-vacm": "verified",    "t2-inf": "verified",   "t2-tec": "verified",
+  "t2-vis":  "corroborated","t2-her": "verified",   "t2-elb": "verified",
+  "t2-gcf":  "verified",    "t2-com": "corroborated","t2-skf": "verified",
+  "t2-zie":  "corroborated","t2-sim": "verified",   "t2-swa": "corroborated",
+  "t2-lhc":  "verified",    "t2-hhl": "verified",
+  // WB tier 3
+  "t3-tsmc": "corroborated","t3-lyn": "corroborated","t3-mpm": "inferred",
+  "t3-bol":  "verified",    "t3-umi": "verified",   "t3-nov": "corroborated",
+  "t3-ova":  "inferred",
+  // US tier 2
+  "u2-tsmc": "verified",    "u2-mur": "verified",   "u2-zhk": "verified",
+  "u2-lcop": "verified",    "u2-vale": "corroborated","u2-glen": "corroborated",
+  "u2-ti":   "verified",    "u2-mol": "verified",   "u2-ren": "verified",
+  "u2-amp":  "corroborated","u2-eat": "verified",   "u2-fre": "corroborated",
+  "u2-up":   "verified",    "u2-cw":  "corroborated","u2-hex": "verified",
+  // US tier 3
+  "u3-asml": "corroborated","u3-xjm": "verified",   "u3-fmcm": "corroborated",
+  "u3-nor":  "inferred",    "u3-gf":  "inferred",
+};
+
+function nodeVerification(n: STNode): Verification {
+  return n.verification ?? NODE_VERIFICATION[n.id] ?? "inferred";
+}
+
+const VERIFICATION_META: Record<Verification, { label: string; color: string; bg: string; desc: string }> = {
+  verified:     { label: "Verified",     color: "#0e7490", bg: "rgba(14,116,144,.1)",  desc: "Confirmed via customs / bill-of-lading shipment records" },
+  corroborated: { label: "Corroborated", color: "#4f46e5", bg: "rgba(79,70,229,.1)",   desc: "2+ independent sources agree (filings, disclosures, trade data)" },
+  inferred:     { label: "AI-Inferred",  color: "#a16207", bg: "rgba(161,98,7,.1)",    desc: "Inferred from industry patterns — pending confirmation" },
+};
 
 // ── WB Tier-1 data ─────────────────────────────────────────────────────────────
 const T1_IDS_WB = ["sit", "ebm", "aal", "gru", "dan", "gfp", "dbs", "sen"];
@@ -321,6 +362,18 @@ function SupplyGraph({ t1Id, nodes, t1MetaMap, hqName, hqCountry }: {
           boxShadow: "0 4px 20px rgba(0,0,0,.15)", zIndex: 10, pointerEvents: "none",
         }}>
           <div style={{ fontWeight: 800, marginBottom: 4 }}>{hoveredNode.node.name}</div>
+          {(() => {
+            const v = VERIFICATION_META[nodeVerification(hoveredNode.node as STNode)];
+            return (
+              <div style={{ marginBottom: 6 }}>
+                <span style={{
+                  fontSize: 10, padding: "2px 8px", borderRadius: 9999, fontWeight: 700,
+                  background: v.bg, color: v.color,
+                }}>{v.label}</span>
+                <span className="muted" style={{ fontSize: 10, marginLeft: 6 }}>{v.desc}</span>
+              </div>
+            );
+          })()}
           <div className="muted">{(hoveredNode.node as STNode).note}</div>
         </div>
       )}
@@ -377,7 +430,7 @@ export function SubTierIntelligence() {
           { label: "Tier 2 Suppliers Mapped", value: t2Count, sub: "Across 8 tier-1 relationships", color: "var(--accent)" },
           { label: "Tier 3 Nodes Identified", value: t3Count, sub: "Raw material & foundry level", color: "var(--accent)" },
           { label: "Concentration Risks", value: concentrationRisks.filter(r => r.t1Ids.length > 1).length, sub: "Shared sub-tier dependencies", color: "var(--warn)" },
-          { label: "Solo-Sourced Inputs", value: soloSourced.length, sub: "No qualified alternative", color: "var(--risk)" },
+          { label: "Sole-Sourced Inputs", value: soloSourced.length, sub: "No qualified alternative", color: "var(--risk)" },
         ].map((k) => (
           <div key={k.label} className="card" style={{ textAlign: "center" }}>
             <div style={{ fontSize: 32, fontWeight: 900, color: k.color, lineHeight: 1 }}>{k.value}</div>
@@ -386,6 +439,35 @@ export function SubTierIntelligence() {
           </div>
         ))}
       </div>
+
+      {/* Data provenance strip */}
+      {(() => {
+        const counts = { verified: 0, corroborated: 0, inferred: 0 };
+        SUB_NODES.forEach((n) => { counts[nodeVerification(n)]++; });
+        const total = SUB_NODES.length;
+        const pctVerified = Math.round(((counts.verified + counts.corroborated) / total) * 100);
+        return (
+          <div className="card" style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>
+              {pctVerified}% of mapped relationships evidence-backed
+              <InfoTip text="Every sub-tier relationship carries a provenance grade. Verified = confirmed via customs / bill-of-lading shipment records. Corroborated = 2+ independent sources agree. AI-Inferred = pattern-based hypothesis pending confirmation — never presented as fact." width={280} />
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginLeft: "auto" }}>
+              {(Object.keys(counts) as Verification[]).map((k) => {
+                const v = VERIFICATION_META[k];
+                return (
+                  <span key={k} title={v.desc} style={{
+                    fontSize: 11, padding: "3px 10px", borderRadius: 9999, fontWeight: 700,
+                    background: v.bg, color: v.color,
+                  }}>
+                    {v.label} · {counts[k]}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Tab bar */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -478,7 +560,7 @@ export function SubTierIntelligence() {
 
           {/* Solo-sourced inputs */}
           <div className="card">
-            <h2 style={{ marginBottom: 12 }}>Solo-Sourced Tier-2 Inputs<InfoTip text="Tier-2 or Tier-3 components with no identified alternative supplier. Unhedged single points of failure — even if your Tier-1 supplier is resilient, disruption at the sub-tier level can halt production." width={260} /></h2>
+            <h2 style={{ marginBottom: 12 }}>Sole-Sourced Tier-2 Inputs<InfoTip text="Tier-2 or Tier-3 components with no identified alternative supplier. Unhedged single points of failure — even if your Tier-1 supplier is resilient, disruption at the sub-tier level can halt production." width={260} /></h2>
             {soloSourced.map((n) => (
               <div key={n.id} style={{
                 display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -528,6 +610,18 @@ export function SubTierIntelligence() {
             ))}
             <span className="muted" style={{ fontSize: 11 }}>· SOLO = no qualified alternative · dashed line = elevated risk path</span>
           </div>
+          <div style={{ display: "flex", gap: 14, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <span className="muted" style={{ fontSize: 11, fontWeight: 700 }}>Evidence:</span>
+            {Object.values(VERIFICATION_META).map((v) => (
+              <div key={v.label} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11 }}>
+                <span style={{
+                  fontSize: 10, padding: "1px 7px", borderRadius: 9999, fontWeight: 700,
+                  background: v.bg, color: v.color,
+                }}>{v.label}</span>
+                <span className="muted">{v.desc}</span>
+              </div>
+            ))}
+          </div>
 
           {/* T2/T3 node table for this supplier */}
           <div style={{ marginTop: 20 }}>
@@ -536,7 +630,7 @@ export function SubTierIntelligence() {
               <table>
                 <thead>
                   <tr>
-                    <th>Supplier</th><th>Tier</th><th>Country</th><th>Category</th><th>Risk</th><th>Solo Source</th>
+                    <th>Supplier</th><th>Tier</th><th>Country</th><th>Category</th><th>Risk</th><th>Evidence</th><th>Sole Source</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -557,6 +651,19 @@ export function SubTierIntelligence() {
                           }}>
                             {n.risk.charAt(0).toUpperCase() + n.risk.slice(1)}
                           </span>
+                        </td>
+                        <td>
+                          {(() => {
+                            const v = VERIFICATION_META[nodeVerification(n)];
+                            return (
+                              <span title={v.desc} style={{
+                                fontSize: 11, padding: "2px 8px", borderRadius: 9999, fontWeight: 700,
+                                background: v.bg, color: v.color, whiteSpace: "nowrap",
+                              }}>
+                                {v.label}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td>
                           {n.soloSource

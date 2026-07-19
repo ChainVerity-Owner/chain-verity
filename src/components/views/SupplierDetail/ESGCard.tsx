@@ -42,7 +42,7 @@ const COMPLIANCE_TIPS: Record<string, string> = {
   CSDDD: "EU Corporate Sustainability Due Diligence Directive — requires large companies to identify, prevent, and address adverse human rights and environmental impacts across their supply chains. Full enforcement from 2026.",
   LkSG: "German Supply Chain Due Diligence Act (Lieferkettensorgfaltspflichtengesetz) — requires companies with 1,000+ employees in Germany to conduct due diligence on human rights and environmental risks in their global supply chains.",
   EUDR: "EU Deforestation Regulation — prohibits products linked to deforestation or forest degradation from EU markets. Affects timber, palm oil, soy, cocoa, beef, coffee, and rubber supply chains.",
-  CSRD: "EU Corporate Sustainability Reporting Directive — requires large companies to report on climate risk, supply chain impacts, and social factors using standardised European Sustainability Reporting Standards (ESRS).",
+  CSRD: "EU Corporate Sustainability Reporting Directive — requires large companies to report on climate risk, supply chain impacts, and social factors using standardized European Sustainability Reporting Standards (ESRS).",
 };
 
 const US_COMPLIANCE_TIPS: Record<string, string> = {
@@ -62,7 +62,7 @@ export function ESGCard({ supplier }: ESGCardProps) {
     <div className="card">
       <div className="row" style={{ alignItems: "flex-start", marginBottom: 12 }}>
         <div>
-          <h2 style={{ margin: 0 }}>ESG & Compliance <InfoTip text="Environmental, Social, and Governance score sourced from Prewave, scored 0–100. Reflects carbon footprint, labour practices, governance quality, and compliance with EU frameworks (EUDR, CSRD, CSDDD, LkSG). Scores below 60 indicate meaningful non-financial risk." width={260} /></h2>
+          <h2 style={{ margin: 0 }}>ESG & Compliance <InfoTip text="Environmental, Social, and Governance score sourced from Prewave, scored 0–100. Reflects carbon footprint, labor practices, governance quality, and compliance with EU frameworks (EUDR, CSRD, CSDDD, LkSG). Scores below 60 indicate meaningful non-financial risk." width={260} /></h2>
           <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
             360° supplier score · Prewave-equivalent monitoring · Last audit: {esg.lastAudit || "Not available"}
           </div>
