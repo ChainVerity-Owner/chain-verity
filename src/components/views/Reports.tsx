@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { suppliersAll, suppliersAllUS, CONTRACTS, CONTRACTS_US } from "@/lib/data";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { getRec } from "@/lib/analytics";
 import { downloadStub } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -554,7 +555,7 @@ export function Reports() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div className="card">
-        <h2>Reports</h2>
+        <h2>Reports <InfoTip text="On-demand reports combining live platform data with AI-generated narrative. Each report is exported as a formatted document suitable for board packs, procurement reviews, or auditor disclosure." /></h2>
         <div className="card-sub">
           Exportable decision narratives for procurement, finance, and executive stakeholders.
         </div>

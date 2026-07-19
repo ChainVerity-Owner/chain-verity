@@ -129,6 +129,7 @@ export function RecoveryIntelligence() {
           sub="Days before line stops"
           accent="var(--risk)"
           icon="⏱"
+          info="The shortest Time-to-Survive (TTS) across all suppliers — the number of days of existing safety stock before a production line halt occurs if this supplier fails today. This is your most urgent recovery window."
         />
         <KpiCardV2
           label="Longest Recovery Time"
@@ -136,6 +137,7 @@ export function RecoveryIntelligence() {
           sub="Days to qualify alternative"
           accent="var(--warn)"
           icon="🔄"
+          info="The longest Time-to-Recover (TTR) across all suppliers — the number of days required to qualify and onboard a replacement supplier for the hardest-to-source component. Where TTR exceeds TTS, there is a production gap that requires pre-emptive action."
         />
         <KpiCardV2
           label="Sole / Single-Sourced"
@@ -143,6 +145,7 @@ export function RecoveryIntelligence() {
           sub="No or one qualified supplier"
           accent="var(--risk)"
           icon="🔗"
+          info="Suppliers or components with no qualified alternative source. Sole-sourced items create a single point of failure — a disruption cannot be mitigated through switching until a new supplier is fully qualified, which typically takes 60–180 days."
         />
         <KpiCardV2
           label="No Qualified Alternative"
@@ -150,6 +153,7 @@ export function RecoveryIntelligence() {
           sub="Suppliers without backup"
           accent="var(--warn)"
           icon="⚠️"
+          info="Suppliers for whom a potential alternative exists but has not yet been through the full qualification process. These represent latent risk — an alternative is identified but cannot be activated without completing audits, certifications, or trial runs."
         />
       </div>
 

@@ -84,10 +84,10 @@ export function LiveEvents() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div className="grid-4">
-        <KpiCardV2 label="Active Events" value={String(active)} sub="Requiring attention" accent="var(--risk)" icon="🔴" trend={2} trendSuffix="" trendHigherIsBetter={false} />
-        <KpiCardV2 label="Critical Severity" value={String(critical)} sub="Immediate action needed" accent="var(--risk)" icon="🚨" />
-        <KpiCardV2 label="Delayed Shipments" value={String(delayedShipments)} sub="Across all carriers" accent="var(--warn)" icon="🚢" />
-        <KpiCardV2 label="Shipment Value at Risk" value={`${currency}${totalExposure.toFixed(1)}M`} sub="Delayed or at-risk cargo" accent="var(--warn)" />
+        <KpiCardV2 label="Active Events" value={String(active)} sub="Requiring attention" accent="var(--risk)" icon="🔴" trend={2} trendSuffix="" trendHigherIsBetter={false} info="Live disruption events currently affecting or threatening suppliers in the network — geopolitical incidents, extreme weather, port closures, labor disputes, and regulatory actions. Events are resolved when the disruption ends or the supplier confirms no impact." />
+        <KpiCardV2 label="Critical Severity" value={String(critical)} sub="Immediate action needed" accent="var(--risk)" icon="🚨" info="Events rated Critical — disruptions already causing or imminently likely to cause production halts or shipment detentions. Critical events require same-day escalation to procurement leadership and activation of contingency plans." />
+        <KpiCardV2 label="Delayed Shipments" value={String(delayedShipments)} sub="Across all carriers" accent="var(--warn)" icon="🚢" info="Inbound shipments currently delayed relative to their scheduled arrival. Delays are tracked across all carriers and updated in real time. Shipments delayed more than 5 days trigger an automatic recovery action recommendation." />
+        <KpiCardV2 label="Shipment Value at Risk" value={`${currency}${totalExposure.toFixed(1)}M`} sub="Delayed or at-risk cargo" accent="var(--warn)" info="Combined value of all cargo currently delayed or flagged at-risk across active shipments. Represents the upper bound of financial exposure if delayed goods are lost, detained, or require emergency air freight." />
       </div>
 
       {/* Event feed */}

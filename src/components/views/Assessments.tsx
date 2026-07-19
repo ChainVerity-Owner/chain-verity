@@ -4,6 +4,7 @@ import { useState } from "react";
 import { KpiCardV2 } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { useApp, useSuppliers } from "@/context/AppContext";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { Assessment, AssessmentStatus } from "@/types";
 
 function statusVariant(s: AssessmentStatus) {
@@ -72,6 +73,7 @@ export function Assessments() {
           sub="Supplier assessments"
           accent="var(--ok)"
           icon="✅"
+          info="Number of supplier assessments with all questions answered and submitted. Completed assessments are scored automatically; any responses breaching thresholds generate risk flags."
         />
         <KpiCardV2
           label="Avg Completion"
@@ -79,6 +81,7 @@ export function Assessments() {
           sub="Across active assessments"
           accent="var(--accent)"
           icon="📋"
+          info="Mean percentage of questions answered across all in-progress assessments. Low completion rates may indicate supplier disengagement — consider sending a reminder or escalating to your account manager."
         />
         <KpiCardV2
           label="Overdue"
@@ -86,6 +89,7 @@ export function Assessments() {
           sub="Past due date"
           accent="var(--risk)"
           icon="⏰"
+          info="Assessments that have passed their due date without full completion. Overdue assessments block compliance sign-off and may indicate supplier relationship or onboarding issues that need follow-up."
         />
         <KpiCardV2
           label="Risk Flags Raised"
@@ -93,6 +97,7 @@ export function Assessments() {
           sub="Across all responses"
           accent="var(--warn)"
           icon="🚩"
+          info="Total responses automatically flagged as high-risk during assessment scoring. Flags are raised when a supplier's answer falls outside the acceptable threshold defined in the template — each flag feeds into the supplier's overall risk score."
         />
       </div>
 
@@ -126,7 +131,7 @@ export function Assessments() {
 
       {/* Assessment table */}
       <div className="card">
-        <h2>Supplier Assessment Register</h2>
+        <h2>Supplier Assessment Register <InfoTip text="Tracks the status of all supplier self-assessment questionnaires. Completion % reflects answered vs. total questions. Risk flags are auto-raised when a response falls outside acceptable thresholds." /></h2>
         <div className="card-sub">
           Self-assessment questionnaires · ESG · Financial health · Operational resilience
         </div>
@@ -286,9 +291,9 @@ export function Assessments() {
 
       {/* Template library */}
       <div className="card">
-        <h2>Assessment Template Library</h2>
+        <h2>Assessment Template Library <InfoTip text="Pre-built questionnaire templates covering ESG, financial health, cybersecurity, and operational resilience. Templates can be sent directly to suppliers or cloned and customized before dispatch." /></h2>
         <div className="card-sub">
-          Standardised questionnaire templates for supplier due diligence
+          Standardized questionnaire templates for supplier due diligence
         </div>
         <div
           style={{
@@ -343,7 +348,7 @@ export function Assessments() {
         (a) => a.status === "In Progress" || a.status === "Completed"
       ).length > 0 && (
         <div className="card">
-          <h2>Risk Flag Summary</h2>
+          <h2>Risk Flag Summary <InfoTip text="Responses automatically flagged as high-risk during assessment scoring. Each flag shows the specific question, the supplier's answer, and the threshold that was breached. Flags feed directly into the supplier's overall risk score." /></h2>
           <div className="card-sub">
             Automatically flagged responses from supplier assessments
           </div>

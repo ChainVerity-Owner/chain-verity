@@ -85,6 +85,7 @@ export function Commodities() {
           sub="Commodities above threshold"
           accent="var(--risk)"
           icon="🚨"
+          info="Commodities whose spot or forward price has breached the alert threshold set for this portfolio. Active alerts may indicate cost pressure on contracts with variable pricing clauses — review sourcing strategy."
         />
         <KpiCardV2
           label="Rising Commodities"
@@ -92,6 +93,7 @@ export function Commodities() {
           sub="vs. 3 months prior"
           accent="var(--warn)"
           icon="📈"
+          info="Number of tracked commodities whose price is higher today than 3 months ago. A broad rise across multiple inputs signals inflationary pressure on your bill of materials — consider forward contracts or alternative materials."
         />
         <KpiCardV2
           label="Biggest Mover"
@@ -99,6 +101,7 @@ export function Commodities() {
           sub={`${biggestMover.changePercent > 0 ? "+" : ""}${biggestMover.changePercent}% QoQ`}
           accent="var(--warn)"
           icon="⚡"
+          info="The single commodity with the largest absolute price change quarter-over-quarter. Outsized moves in a key input often drive margin compression before it appears in supplier financials — a leading indicator of supplier stress."
         />
         <KpiCardV2
           label="Portfolio Avg Change"
@@ -106,6 +109,7 @@ export function Commodities() {
           sub="Blended commodity basket"
           accent={avgChange > 0 ? "var(--warn)" : "var(--ok)"}
           icon="📊"
+          info="Weighted average price change across all tracked commodities in the portfolio basket. A positive figure indicates net input cost inflation. Used to benchmark contract escalation clauses and forecast landed cost."
         />
       </div>
 

@@ -41,21 +41,25 @@ export function Analytics() {
           sub="Across 8 governed suppliers" accent="var(--warn)"
           trend={-3} trendSuffix="%" trendHigherIsBetter={false}
           sparkData={[38, 40, 44, 41, 43, 45, 42, 42]}
+          info="Mean Disruption Probability Score across all governed suppliers — a 12-month probabilistic estimate of operational disruption. DPS combines delivery trends, financial stress signals, event exposure, and resiliency depth. Score above 50 warrants active management."
         />
         <KpiCardV2
           label="High-risk Suppliers" value={String(highRisk)}
           sub="DPS score ≥ 55" accent="var(--risk)"
           icon="⚠️"
+          info="Suppliers with a Disruption Probability Score ≥ 55 — above the threshold for active risk management. Each should have an assigned recovery action, an alternative sourcing option identified, or an escalation owner."
         />
         <KpiCardV2
           label="Estimated Downside" value={`${currency}8.3M`}
           sub="95th pct stress case" accent="var(--risk)"
           trend={-5} trendSuffix="%" trendHigherIsBetter={false}
+          info="95th-percentile downside scenario: the financial impact if the worst-case combination of active risk signals materializes simultaneously. Calculated using spend weighting, disruption probability, and production halt duration estimates."
         />
         <KpiCardV2
           label="Mitigated Exposure" value={`${currency}5.1M`}
           sub="Through renegotiation actions" accent="var(--ok)"
           trend={12} trendSuffix="%" trendHigherIsBetter={true}
+          info="Exposure that has been de-risked through completed recovery actions — renegotiated contracts, qualified alternatives, safety stock increases, or dual-sourcing arrangements. Rising trend indicates effective risk reduction."
         />
       </div>
 

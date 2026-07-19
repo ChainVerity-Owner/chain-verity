@@ -3,6 +3,7 @@
 import { useApp } from "@/context/AppContext";
 import { Badge } from "@/components/ui/Badge";
 import { DATA_FEEDS } from "@/lib/data";
+import { InfoTip } from "@/components/ui/InfoTip";
 
 const NOTIFICATIONS = [
   { key: "emailRisk", label: "Email alerts on risk escalation" },
@@ -10,17 +11,173 @@ const NOTIFICATIONS = [
   { key: "weeklyDigest", label: "Weekly digest report" },
 ];
 
+const APPETITE_OPTIONS: { value: "Conservative" | "Moderate" | "Aggressive"; label: string; desc: string; color: string }[] = [
+  {
+    value: "Conservative",
+    label: "Conservative",
+    desc: "Flag any TTR gap or safety stock shortfall. Recommended for critical-component or single-source-heavy portfolios.",
+    color: "var(--risk)",
+  },
+  {
+    value: "Moderate",
+    label: "Moderate",
+    desc: "Flag gaps >15 days, unqualified alternatives, and shortfalls >10 days. Balances resilience with working capital.",
+    color: "var(--warn)",
+  },
+  {
+    value: "Aggressive",
+    label: "Aggressive",
+    desc: "Flag only gaps >30 days with no qualified alternative. Accepts short-term exposure in exchange for lower inventory cost.",
+    color: "var(--ok)",
+  },
+];
+
+const DATA_SOURCES = [
+  { name: "SAP S/4HANA", type: "ERP", status: "Active", lastSync: "4 minutes ago", recordCount: "1,247 supplier records" },
+  { name: "Dun & Bradstreet", type: "Credit Risk", status: "Active", lastSync: "6 hours ago", recordCount: "50 suppliers monitored" },
+  { name: "Reuters / Dow Jones", type: "News Intelligence", status: "Active", lastSync: "12 minutes ago", recordCount: "400+ languages" },
+  { name: "GLEIF", type: "Legal Entity", status: "Active", lastSync: "1 day ago", recordCount: "50 LEIs verified" },
+  { name: "UN Comtrade", type: "Trade Data", status: "Active", lastSync: "3 days ago", recordCount: "Tariff & trade flows" },
+  { name: "EU EONET / GDACS", type: "Disruption Events", status: "Active", lastSync: "Real-time", recordCount: "150+ risk categories" },
+  { name: "Companies House", type: "Corporate Registry", status: "Active", lastSync: "2 days ago", recordCount: "UK entity verification" },
+  { name: "Manual CSV Import", type: "Supplementary", status: "Active", lastSync: "5 days ago", recordCount: "8 custom fields" },
+];
+
 export function Settings() {
-  const { notificationSettings, toggleNotification, riskThresholds, setRiskThreshold } = useApp();
+  const { notificationSettings, toggleNotification, riskThresholds, setRiskThreshold, riskAppetite, setRiskAppetite } = useApp();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Connected Data Sources */}
       <div className="card">
-        <h2>Settings</h2>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
+          <div>
+            <h2 style={{ marginBottom: 2 }}>Connected Data Sources <InfoTip text="Live integrations feeding supplier data into Chain Verity. Each source is polled on its own cadence; a red status means the last pull failed or is overdue. Reconnect from the Manage Integrations panel." /></h2>
+            <div className="card-sub">8 of 8 sources active · Last full sync 12 min ago</div>
+          </div>
+          <button
+            className="btn"
+            style={{ fontSize: 12, whiteSpace: "nowrap", flexShrink: 0, marginTop: 2 }}
+          >
+            Manage Integrations
+          </button>
+        </div>
+        <div className="divider" />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+          {DATA_SOURCES.map((src) => (
+            <div
+              key={src.name}
+              style={{
+                border: "1px solid var(--line)",
+                borderRadius: 10,
+                padding: "12px 14px",
+                background: "var(--surface)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--ok)", flexShrink: 0 }} />
+                  <span style={{ fontWeight: 700, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {src.name}
+                  </span>
+                </div>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: "var(--ok)",
+                    background: "color-mix(in srgb, var(--ok) 12%, var(--surface))",
+                    border: "1px solid color-mix(in srgb, var(--ok) 30%, transparent)",
+                    borderRadius: 4,
+                    padding: "2px 6px",
+                    flexShrink: 0,
+                  }}
+                >
+                  {src.status}
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "var(--accent)",
+                    background: "color-mix(in srgb, var(--accent) 10%, var(--surface))",
+                    border: "1px solid color-mix(in srgb, var(--accent) 25%, transparent)",
+                    borderRadius: 4,
+                    padding: "2px 6px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {src.type}
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <span className="muted" style={{ fontSize: 11 }}>Last sync: {src.lastSync}</span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: "var(--muted)",
+                    background: "var(--bg)",
+                    border: "1px solid var(--line)",
+                    borderRadius: 4,
+                    padding: "2px 6px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {src.recordCount}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card">
+        <h2>Settings <InfoTip text="Platform-wide configuration. Risk appetite controls alert thresholds and recovery action urgency. Notification preferences govern which events generate alerts and how they are delivered." /></h2>
         <div className="card-sub">Platform configuration for your organization.</div>
         <div className="divider" />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Risk appetite</div>
+            <div className="muted" style={{ fontSize: 12, marginBottom: 12 }}>
+              Sets the threshold at which recovery actions are surfaced and what urgency level is assigned.
+              A Conservative posture surfaces more actions with stronger language; Aggressive surfaces only critical gaps.
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+              {APPETITE_OPTIONS.map((opt) => {
+                const selected = riskAppetite === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setRiskAppetite(opt.value)}
+                    style={{
+                      border: `2px solid ${selected ? opt.color : "var(--line)"}`,
+                      borderRadius: 10,
+                      padding: "12px 14px",
+                      background: selected ? `color-mix(in srgb, ${opt.color} 8%, var(--surface))` : "var(--surface)",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      transition: "border-color 0.15s",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <div style={{ width: 10, height: 10, borderRadius: "50%", background: opt.color, flexShrink: 0 }} />
+                      <span style={{ fontWeight: 700, fontSize: 13, color: selected ? opt.color : "var(--text)" }}>
+                        {opt.label}
+                      </span>
+                      {selected && <span style={{ fontSize: 10, marginLeft: "auto", color: opt.color, fontWeight: 700 }}>ACTIVE</span>}
+                    </div>
+                    <div className="muted" style={{ fontSize: 11, lineHeight: 1.5 }}>{opt.desc}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div>
             <div style={{ fontWeight: 700, marginBottom: 10 }}>Risk thresholds</div>
             <div className="kv">
@@ -131,8 +288,8 @@ export function Settings() {
 
       {/* ERP Integration Hub */}
       <div className="card">
-        <h2>ERP Integration Hub</h2>
-        <div className="card-sub">Connect Chain Verity to your enterprise systems for automated data synchronisation</div>
+        <h2>ERP Integration Hub <InfoTip text="Connect Chain Verity to your enterprise systems. Connected sources push spend, PO, and vendor master data automatically. Pending sources require OAuth or API key setup — click the connector card to begin." /></h2>
+        <div className="card-sub">Connect Chain Verity to your enterprise systems for automated data synchronization</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginTop: 16 }}>
           {[
             { name: "SAP S/4HANA", logo: "🏢", status: "Connected", desc: "Procurement orders, spend data, vendor master", color: "var(--ok)" },
@@ -163,7 +320,7 @@ export function Settings() {
 
       {/* Data Feed Health Panel */}
       <div className="card">
-        <h2>Live Data Feed Status</h2>
+        <h2>Live Data Feed Status <InfoTip text="Real-time status of external data providers — commodity prices, geopolitical risk indices, weather disruption feeds, and credit bureau data. A stale feed degrades risk score accuracy until the next successful pull." /></h2>
         <div className="card-sub">External data provider connections · refresh cadence and last update</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
           {DATA_FEEDS.map((feed, i) => (

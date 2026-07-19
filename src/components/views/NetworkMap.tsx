@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { KpiCardV2 } from "@/components/ui/Card";
 import { riskStateClass, riskStateLabel } from "@/lib/utils";
 import { EuropeMap } from "@/components/ui/Charts";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { Supplier } from "@/types";
 
 interface SubtierNode {
@@ -213,10 +214,10 @@ export function NetworkMap() {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {subtierSupplier && <SubtierModal supplier={subtierSupplier} onClose={() => setSubtierSupplier(null)} />}
       <div className="grid-4">
-        <KpiCardV2 label="Mapped Suppliers" value={String(suppliersAll.length)} sub="Across all tiers" accent="var(--accent)" icon="🏭" />
-        <KpiCardV2 label="Production Sites" value={String(totalSites)} sub="Globally mapped" accent="var(--info)" icon="📍" />
-        <KpiCardV2 label="Critical Parts" value={String(totalParts)} sub="Under coverage" accent="var(--ok)" icon="⚙️" />
-        <KpiCardV2 label="High-Risk Nodes" value={String(highRiskNodes)} sub="Risk score ≥ 70" accent="var(--risk)" icon="⚠️" />
+        <KpiCardV2 label="Mapped Suppliers" value={String(suppliersAll.length)} sub="Across all tiers" accent="var(--accent)" icon="🏭" info="Total suppliers mapped across all tiers — Tier 1 (direct), Tier 2 (sub-tier), and Tier 3 (raw material). Select any node in the grid below to view its upstream and downstream connections." />
+        <KpiCardV2 label="Production Sites" value={String(totalSites)} sub="Globally mapped" accent="var(--info)" icon="📍" info="Total production facilities mapped across all suppliers in the network. Sites are linked to their parent supplier's risk profile and may carry additional geographic concentration or single-source risk." />
+        <KpiCardV2 label="Critical Parts" value={String(totalParts)} sub="Under coverage" accent="var(--ok)" icon="⚙️" info="Distinct critical part numbers tracked across all supply chain edges. A critical part is one where loss of supply would halt production with no immediate substitute — these edges are prioritized in recovery planning." />
+        <KpiCardV2 label="High-Risk Nodes" value={String(highRiskNodes)} sub="Risk score ≥ 70" accent="var(--risk)" icon="⚠️" info="Supplier nodes with a risk score ≥ 70 anywhere in the N-tier network. High-risk sub-tier nodes are often invisible to procurement but can cascade disruptions upstream to Tier 1 suppliers." />
       </div>
 
       {/* Supply Chain Map — WB only */}
@@ -224,7 +225,7 @@ export function NetworkMap() {
         <div className="map-card">
           <div className="row" style={{ marginBottom: 14 }}>
             <div>
-              <h2 style={{ margin: 0 }}>European Supply Network Map</h2>
+              <h2 style={{ margin: 0 }}>European Supply Network Map <InfoTip text="Geographic view of the Worcester Bosch supplier footprint across Europe. Pin color indicates risk level. Hover a pin for a quick summary; click to open the full supplier profile." /></h2>
               <div className="card-sub" style={{ marginBottom: 0 }}>Worcester Bosch supplier footprint · hover pins for details · click to open supplier</div>
             </div>
           </div>
@@ -236,7 +237,7 @@ export function NetworkMap() {
       <div className="card">
         <div className="row" style={{ marginBottom: 14 }}>
           <div>
-            <h2 style={{ margin: 0 }}>Supply Chain Network — N-Tier Map</h2>
+            <h2 style={{ margin: 0 }}>Supply Chain Network — N-Tier Map <InfoTip text="Structured view of all mapped suppliers across Tier 1 (direct), Tier 2 (sub-tier), and Tier 3 (raw materials). Select a node to reveal upstream suppliers feeding into it and downstream buyers receiving from it." /></h2>
             <div className="card-sub" style={{ marginBottom: 0 }}>
               Click any supplier node to explore upstream and downstream dependencies.
             </div>
@@ -314,7 +315,7 @@ export function NetworkMap() {
         <div className="card">
           <div className="row" style={{ marginBottom: 12 }}>
             <div>
-              <h2 style={{ margin: 0 }}>{selectedSupplier.name} — Dependency Map</h2>
+              <h2 style={{ margin: 0 }}>{selectedSupplier.name} — Dependency Map <InfoTip text="Upstream: companies that supply raw materials or components to this supplier. Downstream: your organization or intermediaries that receive finished goods from them. Site-level detail is shown below." /></h2>
               <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
                 Tier {selectedSupplier.tier} · {selectedSupplier.category} · {selectedSupplier.region}
               </div>
@@ -395,7 +396,7 @@ export function NetworkMap() {
 
       {/* All sites table */}
       <div className="card">
-        <h2>All Mapped Sites</h2>
+        <h2>All Mapped Sites <InfoTip text="Every production facility in the network, mapped to its supplier and risk score. Sites inherit their parent supplier's risk band but may carry additional geographic or single-source concentration risk." /></h2>
         <div className="card-sub">Global production site coverage across the supply network.</div>
         <div className="table-wrap">
           <table>

@@ -69,7 +69,7 @@ body {
 
 /* ── Brand ── */
 .brand { padding: 16px 14px 14px; border-bottom: 1px solid #1a2640; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
-.brand-logo { height: 28px; width: auto; display: block; }
+.brand-logo { width: 68%; max-width: 116px; height: auto; display: block; margin: 0 auto; }
 .sidebar-close { display: none; }
 .brand-lockup { display: flex; align-items: center; gap: 10px; }
 .brand-cv {
@@ -244,7 +244,7 @@ tr:hover td { background: var(--surface-hover); }
 .dps-hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: linear-gradient(180deg,rgba(15,76,129,.07),rgba(15,76,129,.02)); min-width: 200px; }
 [data-theme="dark"] .dps-hero { background: linear-gradient(180deg,rgba(26,107,172,.18),rgba(26,107,172,.05)); }
 .dps-label { font-size: 11px; color: var(--muted); line-height: 1.2; }
-.dps-score { font-size: 40px; font-weight: 900; letter-spacing: -.02em; line-height: 1; color: var(--text); }
+.dps-score { font-size: 40px; font-weight: 900; letter-spacing: -.02em; line-height: 1; color: var(--text); font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .dps-pill { font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); background: rgba(0,0,0,.03); white-space: nowrap; align-self: flex-start; }
 .dps-pill.low { background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.35); color: #166534; }
 .dps-pill.med { background: rgba(245,158,11,.14); border-color: rgba(245,158,11,.35); color: #92400e; }
@@ -482,7 +482,7 @@ tr:hover td { background: var(--surface-hover); }
   border-radius: var(--radius) var(--radius) 0 0;
 }
 .kpi-v2-label { font-size: 10.5px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
-.kpi-v2-value { font-size: 34px; font-weight: 800; margin: 6px 0 2px; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi-v2-value { font-size: 34px; font-weight: 800; margin: 6px 0 2px; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; font-family: var(--mono); }
 .kpi-v2-footer { display: flex; align-items: center; gap: 7px; margin-top: 6px; flex-wrap: wrap; }
 .kpi-v2-sub { font-size: 11px; color: var(--muted); }
 
@@ -610,3 +610,150 @@ tr:hover td { background: var(--surface-hover); }
 /* ── Gradient progress (enhanced) ── */
 .gbar-wrap { height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; }
 .gbar-fill  { height: 100%; border-radius: 999px; transition: width .5s ease; }
+
+/* ── CFO Briefing view ────────────────────────────────────────────────────── */
+.cfo-briefing {
+  display: flex; flex-direction: column; gap: 0;
+  max-width: 1000px;
+}
+
+.cfo-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+  margin-bottom: 24px;
+}
+.cfo-header-title {
+  font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.2;
+}
+.cfo-header-stamp {
+  font-size: 12px; color: var(--muted); margin-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.cfo-header-right { display: flex; align-items: center; gap: 10px; }
+.cfo-mode-toggle {
+  display: flex; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 6px; overflow: hidden;
+}
+.cfo-mode-btn {
+  padding: 5px 14px; font-size: 12px; font-weight: 500;
+  border: none; background: transparent; color: var(--muted);
+  cursor: pointer; transition: background .1s, color .1s;
+}
+.cfo-mode-btn.on {
+  background: var(--accent); color: #fff;
+}
+.cfo-pending-pill {
+  font-size: 12px; font-weight: 600; color: var(--risk);
+  background: rgba(232,64,64,.08); border: 1px solid rgba(232,64,64,.22);
+  padding: 4px 10px; border-radius: 20px;
+}
+
+/* Section divider */
+.cfo-section-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+}
+.cfo-section-head::after {
+  content: ''; flex: 1; height: 1px; background: var(--line);
+}
+.cfo-section-lbl {
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--muted); white-space: nowrap; font-weight: 600;
+}
+
+/* Delta rows */
+.cfo-deltas { display: flex; flex-direction: column; margin-bottom: 18px; }
+.cfo-delta {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--line);
+}
+.cfo-delta:first-child { border-top: 1px solid var(--line); }
+.cfo-delta-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 6px;
+}
+.cfo-delta-text { font-size: 13px; line-height: 1.55; color: var(--muted); }
+.cfo-delta-text strong { color: var(--text); }
+
+/* Board summary */
+.cfo-board-summary {
+  background: var(--card); border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0; padding: 14px 18px; position: relative;
+}
+.cfo-board-eyebrow {
+  font-size: 10px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--accent); font-weight: 600; margin-bottom: 7px;
+}
+.cfo-board-body { font-size: 13px; line-height: 1.7; color: var(--text); }
+.cfo-board-copy {
+  position: absolute; top: 12px; right: 12px;
+  font-size: 11px; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 4px; padding: 3px 9px; cursor: pointer;
+  transition: color .1s;
+}
+.cfo-board-copy:hover { color: var(--text); }
+
+/* Decision cards */
+.cfo-decisions { display: flex; flex-direction: column; gap: 7px; }
+.cfo-decision {
+  display: flex; align-items: stretch;
+  border: 1px solid var(--line); border-radius: 6px;
+  overflow: hidden; background: var(--card);
+  transition: border-color .1s, opacity .2s;
+}
+.cfo-decision:hover { border-color: var(--accent); }
+.cfo-decision.resolved { opacity: .4; pointer-events: none; }
+.cfo-decision-strip { width: 4px; flex-shrink: 0; }
+.cfo-decision-inner {
+  flex: 1; display: flex; align-items: center; gap: 14px;
+  padding: 13px 15px;
+}
+.cfo-decision-verb {
+  font-size: 10px; font-weight: 800; letter-spacing: .12em;
+  text-transform: uppercase; min-width: 60px; flex-shrink: 0;
+}
+.cfo-decision-content { flex: 1; min-width: 0; }
+.cfo-decision-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.cfo-decision-sub { font-size: 12px; color: var(--muted); line-height: 1.45; }
+.cfo-decision-right { text-align: right; flex-shrink: 0; }
+.cfo-decision-deadline {
+  font-size: 13px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.cfo-decision-deadline-lbl { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.cfo-decision-amount {
+  font-size: 13px; font-weight: 700; color: var(--text);
+  font-variant-numeric: tabular-nums; margin-top: 5px;
+}
+.cfo-decision-action {
+  padding: 13px 15px; display: flex; align-items: center; flex-shrink: 0;
+  border-left: 1px solid var(--line);
+}
+.cfo-decision-action button {
+  padding: 6px 13px; border-radius: 5px;
+  border: 1px solid var(--line); background: var(--surface);
+  color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer;
+  white-space: nowrap; transition: background .1s, border-color .1s;
+}
+.cfo-decision-action button:hover { background: var(--surface-hover); }
+.cfo-decision-action button.primary {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.cfo-decision-action button.primary:hover { opacity: .88; }
+.cfo-decision-action button:disabled { opacity: .5; cursor: default; }
+
+/* Timeline */
+.cfo-timeline-card {
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 6px; padding: 18px 22px;
+}
+.cfo-timeline-legend {
+  display: flex; gap: 18px; margin-top: 12px; flex-wrap: wrap;
+}
+.cfo-leg {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--muted);
+}
+.cfo-leg-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}

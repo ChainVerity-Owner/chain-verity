@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ComposableMap, Geographies, Geography, Marker, Line, ZoomableGroup } from "react-simple-maps";
 import { useApp, useSuppliers } from "@/context/AppContext";
+import { InfoTip } from "@/components/ui/InfoTip";
 import { LIVE_EVENTS, LIVE_EVENTS_US } from "@/lib/data";
 import { Supplier } from "@/types";
 import { Badge } from "@/components/ui/Badge";
@@ -167,6 +168,7 @@ export function GeoRiskMap() {
           sub={`Across ${countryCodes.size} countries`}
           icon="📍"
           accent="var(--accent)"
+          info="Total number of suppliers with geographic coordinates mapped on the risk map. Suppliers without a known location are excluded from the map view but still appear in the risk register table below."
         />
         <KpiCardV2
           label="High Risk"
@@ -175,6 +177,7 @@ export function GeoRiskMap() {
           icon="🔴"
           accent="var(--risk)"
           trendHigherIsBetter={false}
+          info="Suppliers with a composite risk score ≥ 65. Risk score combines financial health, on-time delivery, credit rating, and live event exposure. High-risk suppliers are shown as red pins on the map."
         />
         <KpiCardV2
           label="Portfolio Avg Risk"
@@ -182,6 +185,7 @@ export function GeoRiskMap() {
           sub="Computed across all suppliers"
           icon="📊"
           accent={avgRisk >= 65 ? "var(--risk)" : avgRisk >= 45 ? "var(--warn)" : "var(--ok)"}
+          info="Mean composite risk score across all mapped suppliers. A score ≥ 65 indicates portfolio-wide distress; 45–64 is elevated; below 45 is healthy. Rising trends warrant portfolio-level review."
         />
         <KpiCardV2
           label="Active Events"
@@ -190,6 +194,7 @@ export function GeoRiskMap() {
           icon="⚠️"
           accent="var(--warn)"
           trendHigherIsBetter={false}
+          info="Live disruption events (geopolitical, weather, logistics, labor) currently active in regions where your suppliers operate. Events are shown as pulsing rings on the map near affected locations."
         />
       </div>
 
@@ -205,7 +210,7 @@ export function GeoRiskMap() {
           flexWrap: "wrap",
         }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>Global Supply Chain Risk Map</div>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>Global Supply Chain Risk Map <InfoTip text="Interactive world map showing supplier locations colored by risk score. Red pins = high risk (≥65), amber = medium (45–64), green = low (<45). Concentric rings indicate active disruption events near that location." /></div>
             <div className="card-sub" style={{ marginBottom: 0, marginTop: 2 }}>
               Supplier footprint · Risk concentration · Live disruption events
             </div>
@@ -651,7 +656,7 @@ export function GeoRiskMap() {
 
       {/* Risk register table */}
       <div className="card">
-        <h2>Supplier Risk Register</h2>
+        <h2>Supplier Risk Register <InfoTip text="All suppliers ranked by their computed risk score — a weighted composite of financial health, on-time delivery, credit rating, and active event exposure. Click any row to open the full supplier profile." /></h2>
         <div className="card-sub">All suppliers ranked by computed risk score — click any row to open full profile</div>
         <div className="table-wrap">
           <table>
