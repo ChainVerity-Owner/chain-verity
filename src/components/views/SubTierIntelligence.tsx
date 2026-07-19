@@ -1,8 +1,67 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { InfoTip } from "@/components/ui/InfoTip";
+
+// ── UN Comtrade trade-concentration data ───────────────────────────────────────
+interface TradeCommodity {
+  code: string;
+  label: string;
+  hs: string;
+  year: number;
+  topExporters: { country: string; sharePct: number }[];
+  live: boolean;
+}
+
+function TradeConcentrationCard() {
+  const [data, setData] = useState<{ commodities: TradeCommodity[]; live: boolean } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/comtrade")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.commodities && setData(d))
+      .catch(() => {});
+  }, []);
+
+  if (!data) return null;
+
+  const shareColor = (pct: number) => (pct >= 50 ? "#dc2626" : pct >= 25 ? "#d97706" : "#2563eb");
+
+  return (
+    <div className="card">
+      <h2 style={{ marginBottom: 4 }}>
+        Global Trade Concentration
+        <InfoTip text="Share of global export value by country for strategic input commodities, from UN Comtrade annual trade statistics. Export concentration above 50% in a single country means sub-tier supply is structurally exposed to that country's policy and logistics decisions." width={270} />
+      </h2>
+      <div className="muted" style={{ fontSize: 13, marginBottom: 4 }}>
+        Export share by country for strategic inputs — the structural data behind the concentration risks above.
+      </div>
+      <div className="muted" style={{ fontSize: 11, marginBottom: 14 }}>
+        Source: UN Comtrade · {data.commodities[0]?.year ?? 2023} annual{data.live ? " · live" : " · cached reference"}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+        {data.commodities.map((c) => (
+          <div key={c.code} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px", background: "var(--surface)" }}>
+            <div style={{ fontWeight: 700, fontSize: 13 }}>{c.label}</div>
+            <div className="muted" style={{ fontSize: 10, marginBottom: 10 }}>{c.hs}</div>
+            {c.topExporters.map((e) => (
+              <div key={e.country} style={{ marginBottom: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 2 }}>
+                  <span style={{ fontWeight: e.country !== "Other" ? 600 : 400, color: e.country === "Other" ? "var(--muted)" : "var(--text)" }}>{e.country}</span>
+                  <span style={{ fontWeight: 700, color: e.country === "Other" ? "var(--muted)" : shareColor(e.sharePct), fontFamily: "var(--mono)" }}>{e.sharePct}%</span>
+                </div>
+                <div style={{ height: 5, borderRadius: 3, background: "var(--card)", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${e.sharePct}%`, borderRadius: 3, background: e.country === "Other" ? "var(--line)" : shareColor(e.sharePct) }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ── Sub-tier graph data ────────────────────────────────────────────────────────
 // Based on industry-derived intelligence for WB's tier-1 supplier base.
@@ -557,6 +616,9 @@ export function SubTierIntelligence() {
               );
             })}
           </div>
+
+          {/* Trade concentration — UN Comtrade */}
+          <TradeConcentrationCard />
 
           {/* Solo-sourced inputs */}
           <div className="card">

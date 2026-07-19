@@ -47,8 +47,9 @@ const DATA_SOURCES: { name: string; type: string; status: string; lastSync: stri
   { name: "Dun & Bradstreet", type: "Credit Risk", status: "Active", lastSync: "6 hours ago", recordCount: "50 suppliers monitored", provenance: "Licensed" },
   { name: "Reuters / Dow Jones", type: "News Intelligence", status: "Active", lastSync: "12 minutes ago", recordCount: "400+ languages", provenance: "Licensed" },
   { name: "GLEIF", type: "Legal Entity", status: "Active", lastSync: "1 day ago", recordCount: "50 LEIs verified", provenance: "Public" },
-  { name: "UN Comtrade", type: "Trade Data", status: "Active", lastSync: "3 days ago", recordCount: "Tariff & trade flows", provenance: "Public" },
-  { name: "EU EONET / GDACS", type: "Disruption Events", status: "Active", lastSync: "Real-time", recordCount: "150+ risk categories", provenance: "Public" },
+  { name: "UN Comtrade", type: "Trade Data", status: "Active", lastSync: "Annual · cached 24h", recordCount: "Export concentration", provenance: "Public" },
+  { name: "NASA EONET / USGS / NWS", type: "Disruption Events", status: "Active", lastSync: "Real-time", recordCount: "Quakes, storms, alerts", provenance: "Public" },
+  { name: "GDELT Project", type: "News Events", status: "Active", lastSync: "15 min", recordCount: "Global media monitoring", provenance: "Public" },
   { name: "Companies House", type: "Corporate Registry", status: "Active", lastSync: "2 days ago", recordCount: "UK entity verification", provenance: "Public" },
   { name: "Manual CSV Import", type: "Supplementary", status: "Active", lastSync: "5 days ago", recordCount: "8 custom fields", provenance: "Customer" },
 ];
@@ -63,7 +64,7 @@ export function Settings() {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
           <div>
             <h2 style={{ marginBottom: 2 }}>Connected Data Sources <InfoTip text="Live integrations feeding supplier data into Chain Verity. Each source is polled on its own cadence; a red status means the last pull failed or is overdue. Reconnect from the Manage Integrations panel." /></h2>
-            <div className="card-sub">9 of 9 sources active · Last full sync 12 min ago</div>
+            <div className="card-sub">10 of 10 sources active · Last full sync 12 min ago</div>
           </div>
           <button
             className="btn"

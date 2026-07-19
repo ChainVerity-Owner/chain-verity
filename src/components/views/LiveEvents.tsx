@@ -48,17 +48,21 @@ export function LiveEvents() {
   const [eonetStatus, setEonetStatus] = useState<"loading" | "live" | "error">("loading");
 
   useEffect(() => {
-    fetch("/api/eonet")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setEonetEvents(data as LiveEvent[]);
-          setEonetStatus("live");
-        } else {
-          setEonetStatus("error");
-        }
-      })
-      .catch(() => setEonetStatus("error"));
+    // Keyless live feeds, fetched in parallel; each degrades independently
+    const feeds = ["/api/eonet", "/api/usgs", "/api/nws", "/api/gdelt"];
+    Promise.allSettled(
+      feeds.map((f) => fetch(f).then((res) => (res.ok ? res.json() : null)))
+    ).then((results) => {
+      const merged = results.flatMap((r) =>
+        r.status === "fulfilled" && Array.isArray(r.value) ? (r.value as LiveEvent[]) : []
+      );
+      if (merged.length > 0 || results.some((r) => r.status === "fulfilled" && Array.isArray(r.value))) {
+        setEonetEvents(merged);
+        setEonetStatus("live");
+      } else {
+        setEonetStatus("error");
+      }
+    });
   }, []);
 
   const allEvents = [...eonetEvents, ...platformEvents];
@@ -102,10 +106,10 @@ export function LiveEvents() {
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: eonetStatus === "live" ? "var(--ok)" : eonetStatus === "loading" ? "var(--warn)" : "var(--muted)" }} />
               <span className="muted" style={{ fontSize: 11 }}>
                 {eonetStatus === "live"
-                  ? `NASA EONET: ${eonetEvents.length} active natural events · refreshed 15 min`
+                  ? `Live feeds: ${eonetEvents.length} events from NASA EONET · USGS · NOAA NWS · GDELT · refreshed 15 min`
                   : eonetStatus === "loading"
-                  ? "Fetching NASA EONET events…"
-                  : "NASA EONET unavailable — showing curated events"}
+                  ? "Fetching live event feeds (EONET, USGS, NWS, GDELT)…"
+                  : "Live feeds unavailable — showing curated events"}
               </span>
             </div>
           </div>
