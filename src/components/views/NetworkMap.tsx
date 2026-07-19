@@ -219,8 +219,8 @@ export function NetworkMap() {
         <KpiCardV2 label="High-Risk Nodes" value={String(highRiskNodes)} sub="Risk score ≥ 70" accent="var(--risk)" icon="⚠️" />
       </div>
 
-      {/* Supply Chain Map — mode-aware */}
-      {isWB ? (
+      {/* Supply Chain Map — WB only */}
+      {isWB && (
         <div className="map-card">
           <div className="row" style={{ marginBottom: 14 }}>
             <div>
@@ -229,50 +229,6 @@ export function NetworkMap() {
             </div>
           </div>
           <EuropeMap onSelect={(id) => setRoute("supplier", { id })} />
-        </div>
-      ) : (
-        <div className="card">
-          <div className="row" style={{ alignItems: "flex-start", marginBottom: 14 }}>
-            <div>
-              <h2 style={{ margin: 0 }}>Global Supply Network Map</h2>
-              <div className="card-sub" style={{ marginBottom: 0 }}>
-                Meridian Industrial Group supplier footprint · geographic risk concentration · live disruption events
-              </div>
-            </div>
-            <button className="btn primary" onClick={() => setRoute("geomap")}>
-              Open Full Risk Map →
-            </button>
-          </div>
-          <div style={{
-            background: "linear-gradient(180deg, #bfdbfe 0%, #dbeafe 60%, #e0f7fa 100%)",
-            borderRadius: 12, padding: "40px 24px",
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
-            border: "1px solid var(--line)",
-          }}>
-            <div style={{ fontSize: 40 }}>🌎</div>
-            <div style={{ fontWeight: 700, fontSize: 15, textAlign: "center" }}>
-              Interactive global supplier map with live event overlay
-            </div>
-            <div className="muted" style={{ fontSize: 13, textAlign: "center", maxWidth: 440 }}>
-              Supply lanes from Chain Verity HQ (Newark, DE) to all {suppliersAll.length} mapped suppliers ·
-              Risk-colored pins · UFLPA enforcement events · ILA port disruptions
-            </div>
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
-              {[
-                { label: "Mapped suppliers", value: String(suppliersAll.length), color: "var(--accent)" },
-                { label: "High risk", value: String(highRiskNodes), color: "var(--risk)" },
-                { label: "Active events", value: "5", color: "var(--warn)" },
-              ].map(({ label, value, color }) => (
-                <div key={label} style={{ textAlign: "center", background: "rgba(255,255,255,.6)", borderRadius: 10, padding: "10px 20px" }}>
-                  <div style={{ fontSize: 22, fontWeight: 800, color }}>{value}</div>
-                  <div className="muted" style={{ fontSize: 11 }}>{label}</div>
-                </div>
-              ))}
-            </div>
-            <button className="btn primary" style={{ marginTop: 8 }} onClick={() => setRoute("geomap")}>
-              Open Interactive Map →
-            </button>
-          </div>
         </div>
       )}
 
