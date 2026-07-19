@@ -23,12 +23,15 @@ import { Commodities } from "@/components/views/Commodities";
 import { Assessments } from "@/components/views/Assessments";
 import { SubTierIntelligence } from "@/components/views/SubTierIntelligence";
 import { GeoRiskMap } from "@/components/views/GeoRiskMap";
+import { CFOBriefing } from "@/components/views/CFOBriefing";
+import { CPOBriefing } from "@/components/views/CPOBriefing";
 import { AIChat } from "@/components/ui/AIChat";
 
 function AppContent() {
   const { route, role, mobileSidebarOpen, setMobileSidebarOpen } = useApp();
   const allowed = ROLE_ROUTES[role];
-  const activeRoute = allowed.includes(route) ? route : "dashboard";
+  const defaultRoute = role === "CFO" ? "cfo" : "dashboard";
+  const activeRoute = allowed.includes(route) ? route : defaultRoute;
 
   const views: Record<string, React.ReactNode> = {
     dashboard: <Dashboard />,
@@ -49,6 +52,8 @@ function AppContent() {
     assessments: <Assessments />,
     subtier: <SubTierIntelligence />,
     geomap: <GeoRiskMap />,
+    cfo: <CFOBriefing />,
+    cpo: <CPOBriefing />,
   };
 
   return (

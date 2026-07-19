@@ -434,7 +434,8 @@ export type Route =
   | "assessments"
   | "subtier"
   | "geomap"
-  | "cfo";
+  | "cfo"
+  | "cpo";
 
 export interface RouteState {
   route: Route;

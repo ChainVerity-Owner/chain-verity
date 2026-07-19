@@ -72,6 +72,7 @@ export function Sidebar() {
   const overviewNav: NavItem[] = [
     { route: "dashboard", label: "Dashboard" },
     { route: "cfo", label: "CFO Briefing" },
+    { route: "cpo", label: "CPO Briefing" },
     { route: "alerts", label: "Alerts", badge: undismissedAlerts > 0 ? String(undismissedAlerts) : undefined },
     { route: "events", label: "Live Events", badge: activeEvents > 0 ? String(activeEvents) : undefined },
     { route: "crisis", label: "Crisis Response", badge: openCrisis > 0 ? String(openCrisis) : undefined },
