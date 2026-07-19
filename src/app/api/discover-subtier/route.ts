@@ -1,23 +1,35 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-const SYSTEM_PROMPT = `You are a supply chain intelligence analyst at Chain Verity. Your role is to identify and map sub-tier (Tier 2 and Tier 3) suppliers for direct (Tier 1) suppliers to a manufacturing company.
-
-When discovering sub-tier suppliers, always output a structured JSON response with these exact fields:
-- supplierName: string (the direct supplier being analysed)
-- discoveredNodes: array of {
-    name: string,
-    tier: 2 | 3,
-    country: string,
-    materials: string[],
-    estimatedRisk: "Low" | "Medium" | "High",
-    confidence: "Low" | "Medium" | "High",
-    rationale: string
-  }
-- concentrationRisks: array of strings (geographic or supplier concentration risks identified)
-- dataGaps: array of strings (areas where sub-tier mapping is incomplete)
-- recommendedActions: array of strings
-
-Focus on realistic sub-tier dependencies relevant to the supplier's category and region. Consider raw materials, components, and critical inputs. Output valid JSON only.`;
+const SUBTIER_TOOL: Anthropic.Tool = {
+  name: "report_subtier_suppliers",
+  description: "Report discovered sub-tier suppliers for a given direct supplier.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      supplierName: { type: "string" },
+      discoveredNodes: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            tier: { type: "number" },
+            country: { type: "string" },
+            materials: { type: "array", items: { type: "string" } },
+            estimatedRisk: { type: "string", enum: ["Low", "Medium", "High"] },
+            confidence: { type: "string", enum: ["Low", "Medium", "High"] },
+            rationale: { type: "string" },
+          },
+          required: ["name", "tier", "country", "materials", "estimatedRisk", "confidence", "rationale"],
+        },
+      },
+      concentrationRisks: { type: "array", items: { type: "string" } },
+      dataGaps: { type: "array", items: { type: "string" } },
+      recommendedActions: { type: "array", items: { type: "string" } },
+    },
+    required: ["supplierName", "discoveredNodes", "concentrationRisks", "dataGaps", "recommendedActions"],
+  },
+};
 
 export async function POST(request: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -26,71 +38,33 @@ export async function POST(request: Request) {
   }
 
   const client = new Anthropic({ apiKey });
-  const {
-    supplierId,
-    supplierName,
-    category,
-    tier,
-    region,
-    materials,
-    criticalParts,
-  } = await request.json();
+  const { supplierId, supplierName, category, tier, region, materials, criticalParts } =
+    await request.json();
 
   const userMessage = `Discover and map sub-tier suppliers for this Tier ${tier} supplier:
 
-Supplier: ${supplierName}
-Internal ID: ${supplierId}
-Category: ${category}
-Current Tier: ${tier}
-Region: ${region}
-${materials ? `Materials supplied: ${materials.join(", ")}` : ""}
-${criticalParts ? `Critical parts: ${criticalParts.join(", ")}` : ""}
+Supplier: ${supplierName} (ID: ${supplierId})
+Category: ${category} · Region: ${region}
+${materials?.length ? `Materials supplied: ${materials.join(", ")}` : ""}
+${criticalParts?.length ? `Critical parts: ${criticalParts.join(", ")}` : ""}
 
-Identify likely Tier ${tier + 1} and Tier ${tier + 2} sub-suppliers based on:
-1. Typical supply chains for manufacturers in the ${category} category
-2. Known major sub-tier suppliers in the relevant regions
-3. Raw material and component dependencies
-4. Geographic concentration risks (especially China, Taiwan, single-source exposure)
-
-Provide realistic but clearly illustrative sub-tier nodes appropriate for an industrial supply chain demo. Output JSON only.`;
+Identify likely Tier ${tier + 1} and Tier ${tier + 2} sub-suppliers based on typical supply chains for ${category} manufacturers in ${region}. Include geographic concentration risks (China, Taiwan, single-source). Return 4–8 realistic nodes.`;
 
   try {
     const response = await client.messages.create({
-      model: "claude-opus-4-5",
+      model: "claude-sonnet-4-6",
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      tools: [SUBTIER_TOOL],
+      tool_choice: { type: "auto" },
       messages: [{ role: "user", content: userMessage }],
     });
 
-    const text =
-      response.content[0].type === "text" ? response.content[0].text : "";
-
-    const cleaned = text.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      parsed = {
-        supplierName,
-        discoveredNodes: [
-          {
-            name: "Discovery incomplete — retry",
-            tier: tier + 1,
-            country: region,
-            materials: materials ?? [],
-            estimatedRisk: "Medium",
-            confidence: "Low",
-            rationale: "Parse error — manual review required.",
-          },
-        ],
-        concentrationRisks: [],
-        dataGaps: ["Full sub-tier data unavailable in demo mode."],
-        recommendedActions: ["Run full sub-tier discovery with live data feeds."],
-      };
+    const toolUse = response.content.find((b) => b.type === "tool_use");
+    if (toolUse && toolUse.type === "tool_use") {
+      return Response.json(toolUse.input);
     }
 
-    return Response.json(parsed);
+    return new Response("No tool call returned", { status: 500 });
   } catch (err) {
     console.error("discover-subtier error:", err);
     return new Response("Discovery failed", { status: 500 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useApp } from "@/context/AppContext";
+import { useApp, useSuppliers } from "@/context/AppContext";
 import { ROLE_USERS_MAP } from "@/context/AppContext";
 import { Route } from "@/types";
 import { ROLE_ROUTES } from "@/lib/roles";
@@ -11,14 +11,7 @@ interface NavItem {
   badge?: string;
 }
 
-const overviewNav: NavItem[] = [
-  { route: "dashboard", label: "Dashboard" },
-  { route: "alerts", label: "Alerts", badge: "4" },
-  { route: "events", label: "Live Events", badge: "8" },
-  { route: "crisis", label: "Crisis Response", badge: "3" },
-];
-
-const networkNav: NavItem[] = [
+const networkNav_static: NavItem[] = [
   { route: "suppliers", label: "Suppliers" },
   { route: "geomap", label: "Risk Map" },
   { route: "network", label: "Network Map" },
@@ -46,7 +39,7 @@ function NavButton({ route, label, badge }: NavItem) {
   return (
     <button className={`nav-btn ${isActive ? "active" : ""}`} onClick={() => setRoute(route)}>
       <span>{label}</span>
-      {badge && <span className="nav-count">{badge}</span>}
+      {badge && <span className="nav-count" suppressHydrationWarning>{badge}</span>}
     </button>
   );
 }
@@ -63,9 +56,26 @@ function NavSection({ label, items, allowed }: { label: string; items: NavItem[]
 }
 
 export function Sidebar() {
-  const { role, darkMode, toggleDarkMode, mobileSidebarOpen, setMobileSidebarOpen } = useApp();
+  const { role, darkMode, toggleDarkMode, mobileSidebarOpen, setMobileSidebarOpen, dismissedAlerts, platformAlerts, platformEvents, platformCrisisRooms } = useApp();
+  const suppliers = useSuppliers();
   const user = ROLE_USERS_MAP[role];
   const allowed = ROLE_ROUTES[role];
+
+  const allAlerts = [
+    ...platformAlerts,
+    ...suppliers.flatMap((s) => s.alerts || []),
+  ];
+  const undismissedAlerts = allAlerts.filter((a) => !dismissedAlerts[a.id]).length;
+  const activeEvents = platformEvents.filter((e) => e.status === "Active").length;
+  const openCrisis = platformCrisisRooms.filter((r) => r.status === "Open").length;
+
+  const overviewNav: NavItem[] = [
+    { route: "dashboard", label: "Dashboard" },
+    { route: "cfo", label: "CFO Briefing" },
+    { route: "alerts", label: "Alerts", badge: undismissedAlerts > 0 ? String(undismissedAlerts) : undefined },
+    { route: "events", label: "Live Events", badge: activeEvents > 0 ? String(activeEvents) : undefined },
+    { route: "crisis", label: "Crisis Response", badge: openCrisis > 0 ? String(openCrisis) : undefined },
+  ];
 
   return (
     <aside className={`sidebar ${mobileSidebarOpen ? "mobile-open" : ""}`}>
@@ -76,7 +86,7 @@ export function Sidebar() {
 
       <div className="sidebar-nav-scroll">
         <NavSection label="Overview" items={overviewNav} allowed={allowed} />
-        <NavSection label="Network" items={networkNav} allowed={allowed} />
+        <NavSection label="Network" items={networkNav_static} allowed={allowed} />
         <NavSection label="Intelligence" items={intelligenceNav} allowed={allowed} />
         <NavSection label="System" items={systemNav} allowed={allowed} />
       </div>
