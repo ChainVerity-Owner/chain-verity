@@ -1,7 +1,10 @@
-// Global news events from the GDELT Project DOC 2.0 API
+// Global news from the GDELT Project DOC 2.0 API
 // No API key required — free and open, ~15-minute latency
 // Docs: https://blog.gdeltproject.org/gdelt-doc-2-0-api-debuts/
-// Supplements NewsAPI (whose free tier is delayed 24h) for fresh disruption signals.
+//
+// Two modes:
+//   GET (no query)     → sector-wide disruption events for Live Events
+//   GET ?q={supplier}  → recent articles for one supplier (SupplierDetail news feed)
 
 import { suppliersAll, suppliersAllUS } from "@/lib/data";
 
@@ -13,6 +16,41 @@ interface GDELTArticle {
   seendate: string;   // YYYYMMDDTHHMMSSZ
   domain: string;
   sourcecountry: string;
+  socialimage?: string;
+}
+
+// Parse GDELT's YYYYMMDDTHHMMSSZ into an ISO timestamp
+function parseSeenDate(d: string): string {
+  if (!d || d.length < 15) return new Date().toISOString();
+  return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T${d.slice(9, 11)}:${d.slice(11, 13)}:${d.slice(13, 15)}Z`;
+}
+
+// Shared fetch with retry — GDELT connections are flaky and it rate-limits with
+// plain-text HTTP 200 bodies, so callers must guard against non-JSON responses.
+async function fetchGDELT(query: string, params: string): Promise<{ articles?: GDELTArticle[] }> {
+  const url =
+    "https://api.gdeltproject.org/api/v2/doc/doc?query=" +
+    encodeURIComponent(query) + params + "&format=json";
+
+  let res: Response | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      res = await fetch(url, {
+        headers: { "User-Agent": "ChainVerity supply chain platform" },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok) break;
+    } catch (e) {
+      if (attempt === 1) throw e;
+    }
+  }
+  if (!res || !res.ok) throw new Error(`GDELT returned ${res?.status ?? "no response"}`);
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`GDELT non-JSON response: ${text.slice(0, 80)}`);
+  }
 }
 
 const QUERY =
@@ -28,35 +66,46 @@ function categorize(title: string): { category: string; severity: string } {
   return { category: "geopolitical", severity: "medium" };
 }
 
-export async function GET() {
-  try {
-    const url =
-      "https://api.gdeltproject.org/api/v2/doc/doc?query=" +
-      encodeURIComponent(QUERY) +
-      "&mode=artlist&maxrecords=40&timespan=3d&sort=hybridrel&format=json";
+export async function GET(request: Request) {
+  const q = new URL(request.url).searchParams.get("q");
 
-    // GDELT connects can be flaky (multi-IP DNS, occasional timeouts) — retry once
-    let res: Response | null = null;
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        res = await fetch(url, {
-          headers: { "User-Agent": "ChainVerity supply chain platform" },
-          signal: AbortSignal.timeout(15000),
-        });
-        if (res.ok) break;
-      } catch (e) {
-        if (attempt === 1) throw e;
-      }
-    }
-    if (!res || !res.ok) throw new Error(`GDELT returned ${res?.status ?? "no response"}`);
-    const text = await res.text();
-    let data: { articles?: GDELTArticle[] };
+  // ── Per-supplier news mode (SupplierDetail feed) ──────────────────────────
+  if (q) {
     try {
-      data = JSON.parse(text);
-    } catch {
-      // GDELT returns plain-text rate-limit messages with HTTP 200
-      throw new Error(`GDELT non-JSON response: ${text.slice(0, 80)}`);
+      const data = await fetchGDELT(
+        `"${q}"`,
+        "&mode=artlist&maxrecords=10&timespan=1m&sort=datedesc"
+      );
+      const seen = new Set<string>();
+      const articles = (data.articles ?? [])
+        .filter((a) => {
+          const key = a.title?.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 60);
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .slice(0, 5)
+        .map((a) => ({
+          title: a.title,
+          description: null as string | null, // GDELT artlist provides no snippet
+          url: a.url,
+          source: a.domain,
+          publishedAt: parseSeenDate(a.seendate),
+          urlToImage: a.socialimage || null,
+        }));
+      return Response.json({ articles, total: articles.length });
+    } catch (err) {
+      console.error("GDELT supplier-news error:", err);
+      return Response.json({ articles: [], total: 0 }, { status: 200 });
     }
+  }
+
+  // ── Sector-wide disruption events (Live Events) ───────────────────────────
+  try {
+    const data = await fetchGDELT(
+      QUERY,
+      "&mode=artlist&maxrecords=40&timespan=3d&sort=hybridrel"
+    );
 
     const allSuppliers = [...suppliersAll, ...suppliersAllUS];
     const seenTitles = new Set<string>();

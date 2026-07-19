@@ -457,7 +457,6 @@ export function SupplierDetail() {
   interface NewsArticle { title: string; description: string | null; url: string; source: string; publishedAt: string; }
   const [news, setNews] = useState<NewsArticle[] | null>(null);
   const [newsLoading, setNewsLoading] = useState(false);
-  const [newsNoKey, setNewsNoKey] = useState(false);
 
   // EDGAR live financials state
   const [edgarData, setEdgarData] = useState<EdgarData | null>(null);
@@ -480,13 +479,9 @@ export function SupplierDetail() {
   // Auto-fetch news on supplier change
   useEffect(() => {
     setNews(null);
-    setNewsNoKey(false);
     setNewsLoading(true);
-    fetch(`/api/news?q=${encodeURIComponent(s.name)}`)
-      .then(async (r) => {
-        if (r.status === 503) { setNewsNoKey(true); return null; }
-        return r.ok ? r.json() : null;
-      })
+    fetch(`/api/gdelt?q=${encodeURIComponent(s.name)}`)
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => { if (data) setNews(data.articles ?? []); })
       .catch(() => setNews([]))
       .finally(() => setNewsLoading(false));
@@ -1487,24 +1482,15 @@ export function SupplierDetail() {
                 <span style={{ fontSize: 16 }}>📰</span>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: 14 }}>Latest News — {s.name}</div>
-                  <div className="muted" style={{ fontSize: 12 }}>via NewsAPI · auto-refreshes every 30 min</div>
+                  <div className="muted" style={{ fontSize: 12 }}>via GDELT · auto-refreshes every 15 min</div>
                 </div>
               </div>
-              {!newsNoKey && news && news.length > 0 && (
+              {news && news.length > 0 && (
                 <span style={{ fontSize: 11, color: "var(--ok)", fontWeight: 600 }}>● LIVE</span>
               )}
             </div>
             {newsLoading && <div className="muted" style={{ fontSize: 13, padding: "8px 0" }}>Fetching latest news…</div>}
-            {newsNoKey && (
-              <div style={{ background: "var(--surface)", borderRadius: 8, padding: "12px 14px", fontSize: 13 }}>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>Add NEWS_API_KEY to enable live supplier news monitoring</div>
-                <div className="muted" style={{ fontSize: 12 }}>
-                  Register free at <a href="https://newsapi.org" target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)" }}>newsapi.org</a> →
-                  copy your API key → <code style={{ fontSize: 11 }}>vercel env add NEWS_API_KEY production</code>
-                </div>
-              </div>
-            )}
-            {!newsLoading && !newsNoKey && news && news.length === 0 && (
+            {!newsLoading && news && news.length === 0 && (
               <div className="muted" style={{ fontSize: 13 }}>No recent news articles found for {s.name}.</div>
             )}
             {news && news.length > 0 && (
