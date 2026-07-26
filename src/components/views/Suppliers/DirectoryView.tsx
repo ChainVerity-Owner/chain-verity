@@ -3,9 +3,11 @@
 import { useState, useMemo } from "react";
 import { useApp, useSuppliers } from "@/context/AppContext";
 import { ROLE_PERMS } from "@/lib/roles";
+import { ProvenanceChip } from "@/components/ui/ProvenanceChip";
+import { coverage, supplierProvenance } from "@/lib/data/provenance";
 
 export function DirectoryView() {
-  const { setRoute, archiveSupplier, unarchiveSupplier, deleteSupplier, archivedIds, customSuppliers, role } = useApp();
+  const { setRoute, archiveSupplier, unarchiveSupplier, deleteSupplier, archivedIds, customSuppliers, role, currency } = useApp();
   const canEdit = ROLE_PERMS.canEditSuppliers(role);
   const [showArchived, setShowArchived] = useState(false);
   const allSuppliers = useSuppliers(showArchived);
@@ -15,6 +17,9 @@ export function DirectoryView() {
   const [tier, setTier] = useState("all");
   const [region, setRegion] = useState("all");
   const [risk, setRisk] = useState("all");
+  const [evidence, setEvidence] = useState("all");
+
+  const cov = useMemo(() => coverage(allSuppliers), [allSuppliers]);
 
   const filtered = useMemo(() => {
     return allSuppliers.filter((s) => {
@@ -23,9 +28,10 @@ export function DirectoryView() {
       if (region !== "all" && s.region !== region) return false;
       if (risk === "high" && (s.risk || 0) < 70) return false;
       if (risk === "low" && (s.risk || 0) >= 70) return false;
+      if (evidence !== "all" && supplierProvenance(s) !== evidence) return false;
       return true;
     });
-  }, [allSuppliers, term, tier, region, risk]);
+  }, [allSuppliers, term, tier, region, risk, evidence]);
 
   function riskColor(r: number) {
     return r >= 70 ? "var(--risk)" : r >= 50 ? "var(--warn)" : "var(--ok)";
@@ -59,6 +65,13 @@ export function DirectoryView() {
           <option value="high">High (≥70)</option>
           <option value="low">Low (&lt;70)</option>
         </select>
+        <select className="tb-select" value={evidence} onChange={(e) => setEvidence(e.target.value)}>
+          <option value="all">Evidence: All</option>
+          <option value="verified">Verified</option>
+          <option value="corroborated">Corroborated</option>
+          <option value="inferred">Review-accepted</option>
+          <option value="unenriched">Unenriched ({cov.counts.unenriched})</option>
+        </select>
       </div>
         {archivedCount > 0 && (
           <button className="btn" style={{ whiteSpace: "nowrap", fontSize: 12 }} onClick={() => setShowArchived((v) => !v)}>
@@ -71,6 +84,7 @@ export function DirectoryView() {
           <thead>
             <tr>
               <th>Name</th>
+              <th>Evidence</th>
               <th>Tier</th>
               <th>Region</th>
               <th>DUNS</th>
@@ -85,15 +99,20 @@ export function DirectoryView() {
             {filtered.map((s) => {
               const isArchived = !!archivedIds[s.id];
               const isCustom = customIds.has(s.id);
+              const prov = supplierProvenance(s);
+              const isUnenriched = prov === "unenriched";
               return (
                 <tr key={s.id} style={{ opacity: isArchived ? 0.45 : 1 }}>
                   <td><b>{s.name}</b>{isArchived && <span className="muted" style={{ fontSize: 11, marginLeft: 6 }}>(archived)</span>}</td>
+                  <td><ProvenanceChip provenance={prov} /></td>
                   <td>{s.tier}</td>
                   <td>{s.region}</td>
-                  <td className="mono">{s.duns}</td>
-                  <td style={{ color: riskColor(s.risk || 0), fontWeight: 600 }}>{s.risk}</td>
-                  <td>${s.spend}M</td>
-                  <td>${s.exposure}M</td>
+                  <td className="mono">{s.duns ?? <span className="muted" style={{ opacity: .6 }}>—</span>}</td>
+                  <td style={isUnenriched ? { color: "var(--muted)", opacity: .6 } : { color: riskColor(s.risk || 0), fontWeight: 600 }}>
+                    {isUnenriched ? "—" : s.risk}
+                  </td>
+                  <td>{currency}{s.spend}M</td>
+                  <td>{isUnenriched ? <span className="muted" style={{ opacity: .6 }}>—</span> : `${currency}${s.exposure}M`}</td>
                   <td>{s.onTime}%</td>
                   <td>
                     <div className="inline" style={{ gap: 6, flexWrap: "nowrap" }}>
@@ -121,6 +140,10 @@ export function DirectoryView() {
             })}
           </tbody>
         </table>
+      </div>
+      <div className="muted" style={{ fontSize: 11, marginTop: 10 }}>
+        A dash means unknown, never inferred. Unenriched suppliers carry no risk score because there is
+        no sourced financial data behind them.
       </div>
     </div>
   );

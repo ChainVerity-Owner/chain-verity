@@ -230,11 +230,17 @@ export interface ContractContact {
   phone?: string;
 }
 
+// ── Evidence provenance ────────────────────────────────────────────────────────
+// How we know what we claim about a supplier. Resolved via supplierProvenance()
+// in src/lib/data/provenance.ts when not set explicitly on the record.
+export type Provenance = "verified" | "corroborated" | "inferred" | "unenriched";
+
 // ── Supplier (extended) ────────────────────────────────────────────────────────
 export interface Supplier {
   website?: string;
   id: string;
   name: string;
+  provenance?: Provenance;
   ticker?: string;
   tier?: number;
   category?: string;
@@ -435,7 +441,8 @@ export type Route =
   | "subtier"
   | "geomap"
   | "cfo"
-  | "cpo";
+  | "cpo"
+  | "import";
 
 export interface RouteState {
   route: Route;

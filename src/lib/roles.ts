@@ -4,8 +4,8 @@ import { Route } from "@/types";
 // Which routes each role can navigate to
 export const ROLE_ROUTES: Record<AppRole, Route[]> = {
   CFO: ["dashboard", "cfo", "alerts", "events", "crisis", "suppliers", "supplier", "contracts", "reports", "geomap", "settings"],
-  Procurement: ["dashboard", "cpo", "alerts", "events", "crisis", "suppliers", "supplier", "network", "subtier", "geomap", "contracts", "analytics", "esg", "recovery", "commodities", "assessments", "reports", "admin", "settings"],
-  Analyst: ["dashboard", "alerts", "events", "suppliers", "supplier", "network", "subtier", "geomap", "analytics", "esg", "recovery", "commodities", "assessments", "reports", "settings"],
+  Procurement: ["dashboard", "cpo", "alerts", "events", "crisis", "suppliers", "supplier", "import", "network", "subtier", "geomap", "contracts", "analytics", "esg", "recovery", "commodities", "assessments", "reports", "admin", "settings"],
+  Analyst: ["dashboard", "alerts", "events", "suppliers", "supplier", "import", "network", "subtier", "geomap", "analytics", "esg", "recovery", "commodities", "assessments", "reports", "settings"],
 };
 
 // Feature-level permissions

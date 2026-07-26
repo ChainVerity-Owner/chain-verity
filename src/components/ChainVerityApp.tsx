@@ -25,6 +25,7 @@ import { SubTierIntelligence } from "@/components/views/SubTierIntelligence";
 import { GeoRiskMap } from "@/components/views/GeoRiskMap";
 import { CFOBriefing } from "@/components/views/CFOBriefing";
 import { CPOBriefing } from "@/components/views/CPOBriefing";
+import { ImportResolve } from "@/components/views/ImportResolve";
 import { AIChat } from "@/components/ui/AIChat";
 
 function AppContent() {
@@ -54,6 +55,7 @@ function AppContent() {
     geomap: <GeoRiskMap />,
     cfo: <CFOBriefing />,
     cpo: <CPOBriefing />,
+    import: <ImportResolve />,
   };
 
   return (

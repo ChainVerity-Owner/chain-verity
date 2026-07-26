@@ -13,6 +13,7 @@ interface NavItem {
 
 const networkNav_static: NavItem[] = [
   { route: "suppliers", label: "Suppliers" },
+  { route: "import", label: "Import & Resolve" },
   { route: "geomap", label: "Risk Map" },
   { route: "network", label: "Network Map" },
   { route: "subtier", label: "Sub-Tier Intelligence" },

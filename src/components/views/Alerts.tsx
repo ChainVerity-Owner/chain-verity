@@ -189,6 +189,114 @@ export function Alerts() {
           </div>
         )}
       </div>
+
+      <AlertDelivery />
+    </div>
+  );
+}
+
+// ── Delivery ──────────────────────────────────────────────────────────────────
+// Alerts that never leave the platform are just a list. This shows the round-trip:
+// matched signal → email + Slack → acknowledgement, and the rules that keep it
+// from becoming noise.
+
+function AlertDelivery() {
+  const { currency, clientMode } = useApp();
+  const isWB = clientMode === "wb";
+
+  const site = isWB ? "Rehau AG · Rehau, DE" : "Trident Microsystems · Fremont, CA";
+  const supplier = isWB ? "Rehau AG" : "Trident Microsystems";
+  const secondary = isWB ? "DB Schenker · Duisburg, DE" : "Halsted Peoria · Peoria, IL";
+  const secondaryNote = isWB
+    ? "EU EONET · flooding on the Rhine corridor · inbound shipments may slip 2–4 days"
+    : "NWS · Winter Storm Warning · inbound shipments may slip 2–4 days";
+
+  return (
+    <div className="grid-2">
+      {/* Email */}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: "13px 16px", borderBottom: "1px solid var(--line)", background: "var(--surface)" }}>
+          <div style={{ fontWeight: 800, fontSize: 14 }}>
+            M5.4 earthquake 38 km from {supplier}
+          </div>
+          <div className="muted mono" style={{ fontSize: 11, marginTop: 3 }}>
+            alerts@chainverity.ai → head.procurement · today 14:22
+          </div>
+        </div>
+        <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 11 }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8,
+            border: "1px solid color-mix(in srgb, var(--risk) 34%, transparent)",
+            background: "color-mix(in srgb, var(--risk) 7%, var(--card))",
+          }}>
+            <span style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--risk)", flexShrink: 0 }} />
+            <div style={{ fontSize: 12 }}>
+              <b>1 supplier within 100 km</b> · 4 within 400 km
+              <div className="muted mono" style={{ fontSize: 10, marginTop: 2 }}>USGS · us7000n4xk · 14:18</div>
+            </div>
+          </div>
+          <div className="kv">
+            <div className="box">Nearest site<b>{site}</b></div>
+            <div className="box">Spend exposed<b>{currency}3.6M</b></div>
+            <div className="box">Sole-sourced parts<b style={{ color: "var(--risk)" }}>2 · TTR 90d vs TTS 22d</b></div>
+          </div>
+          <div className="inline">
+            <button className="btn primary" style={{ fontSize: 12 }}>Open supplier</button>
+            <button className="btn" style={{ fontSize: 12 }}>Acknowledge</button>
+            <button className="btn" style={{ fontSize: 12 }}>Mute 24h</button>
+          </div>
+          <div className="muted" style={{ fontSize: 11 }}>
+            Sent because severity ≥ High and this supplier is on your Tier 1 watchlist. One email per
+            supplier per event.
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {/* Slack */}
+        <div className="card">
+          <div style={{ display: "flex", gap: 12 }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: 6, background: "var(--accent)", color: "#fff",
+              display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700, flexShrink: 0,
+            }}>CV</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>
+                Chain Verity
+                <span className="mono" style={{ fontSize: 9, fontWeight: 600, color: "var(--muted)", border: "1px solid var(--line)", borderRadius: 3, padding: "1px 4px", marginLeft: 6 }}>APP</span>
+                <span className="muted" style={{ fontSize: 11, marginLeft: 6, fontWeight: 400 }}>14:22</span>
+              </div>
+              <div style={{ fontSize: 13, marginTop: 2 }}>2 new supply-risk signals matched to your suppliers.</div>
+              <div style={{ borderLeft: "3px solid var(--risk)", paddingLeft: 11, marginTop: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700 }}>M5.4 earthquake — {isWB ? "Rehau, DE" : "Fremont, CA"}</div>
+                <div className="muted" style={{ fontSize: 11 }}>{supplier} · 38 km · {currency}3.6M spend · 2 sole-sourced parts</div>
+              </div>
+              <div style={{ borderLeft: "3px solid var(--warn)", paddingLeft: 11, marginTop: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 700 }}>{isWB ? "Flood warning" : "Winter Storm Warning"} — {secondary}</div>
+                <div className="muted" style={{ fontSize: 11 }}>{secondaryNote}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Rules */}
+        <div className="card">
+          <h2>Delivery rules <InfoTip width={260} text="Alert products die from day-one noise. Only high-severity matches interrupt; everything else batches into a morning digest, and unmatched sector signals are logged without being sent." /></h2>
+          <div className="card-sub">Built to be ignorable</div>
+          <div className="kv" style={{ marginTop: 10 }}>
+            <div className="box">Dedupe key<b>supplier + event</b></div>
+            <div className="box">Immediate send<b>severity ≥ High</b></div>
+            <div className="box">Everything else<b>08:00 digest</b></div>
+            <div className="box">Proximity radius<b>800 km</b></div>
+            <div className="box">Unmatched sector signals<b>logged, not sent</b></div>
+            <div className="box">Unenriched suppliers<b style={{ color: "var(--ok)" }}>still matched</b></div>
+          </div>
+          <div className="note" style={{ marginTop: 11 }}>
+            <b>Note the last row.</b> Proximity matching runs off site coordinates, so suppliers with no
+            registry match still get real alerts. It is the one capability the evidence gap does not touch.
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

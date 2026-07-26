@@ -5,6 +5,7 @@ import { useApp } from "@/context/AppContext";
 import { GovernedView } from "./GovernedView";
 import { DirectoryView } from "./DirectoryView";
 import { AddSupplierModal } from "./AddSupplierModal";
+import { CoverageCard } from "./CoverageCard";
 import { ROLE_PERMS } from "@/lib/roles";
 
 export function Suppliers() {
@@ -38,6 +39,7 @@ export function Suppliers() {
           </button>
         </div>
       </div>
+      <CoverageCard />
       {suppliersTab === "governed" ? <GovernedView /> : <DirectoryView />}
     </div>
   );
