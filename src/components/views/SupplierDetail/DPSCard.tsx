@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Supplier, MCResult } from "@/types";
-import { calcDPS, runMC, topDrivers, dpsBasis, DPS_MODEL_VERSION } from "@/lib/analytics";
+import { calcDPS, runMC, topDrivers, dpsBasis, dpsBand, DPS_MODEL_VERSION } from "@/lib/analytics";
 import { RECOVERY_PROFILES, RECOVERY_PROFILES_US } from "@/lib/data";
 import { InfoTip } from "@/components/ui/InfoTip";
 
@@ -20,8 +20,9 @@ export function DPSCard({ supplier }: DPSCardProps) {
 
   // det is the primary score — deterministic, stable, matches the header badge.
   // Monte Carlo is a stress-test overlay shown in the detail grid.
-  const pc = det < 25 ? "low" : det < 55 ? "med" : "high";
-  const pl = det < 25 ? "LOW RISK" : det < 55 ? "MEDIUM RISK" : "HIGH RISK";
+  const band = dpsBand(det);
+  const pc = band === "medium" ? "med" : band; // CSS class is .dps-pill.med
+  const pl = `${band.toUpperCase()} RISK`;
 
   function rerun(iter: number) {
     setIters(iter);

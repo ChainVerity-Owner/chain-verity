@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeRisk, calcDPS, dpsBasis, runMC, trendLabel, topDrivers, getRec, computeAltmanZ, computeResiliency, computeOnTime, computeLeadTimeDrift } from "@/lib/analytics";
+import { computeRisk, calcDPS, dpsBasis, dpsBand, DPS_BANDS, runMC, trendLabel, topDrivers, getRec, computeAltmanZ, computeResiliency, computeOnTime, computeLeadTimeDrift } from "@/lib/analytics";
 import type { Supplier, SeriesPoint } from "@/types";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -162,6 +162,16 @@ describe("calcDPS", () => {
   it("dpsBasis reports which components backed the score", () => {
     expect(dpsBasis(stableSupplier)).toBe("full");
     expect(dpsBasis(noRatiosSupplier)).toBe("operational");
+  });
+
+  it("bands at the shared 25/55 cut-points", () => {
+    // The supplier card and Analytics previously banded differently (25/55 vs
+    // 30/55), so one score read "low" on one screen and "medium" on another.
+    expect(DPS_BANDS).toEqual({ low: 25, high: 55 });
+    expect(dpsBand(24)).toBe("low");
+    expect(dpsBand(25)).toBe("medium");
+    expect(dpsBand(54)).toBe("medium");
+    expect(dpsBand(55)).toBe("high");
   });
 
   it("high exposure increases DPS", () => {

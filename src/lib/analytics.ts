@@ -348,6 +348,19 @@ export function dpsBasis(s: Supplier): DPSBasis {
   return s.ratios ? "full" : "operational";
 }
 
+/**
+ * Band cut-points for a DPS figure. Defined once because they were previously
+ * duplicated — the supplier card banded at 25/55 while Analytics banded at
+ * 30/55, so the same score read "low" on one screen and "medium" on another.
+ */
+export const DPS_BANDS = { low: 25, high: 55 } as const;
+
+export type DPSBand = "low" | "medium" | "high";
+
+export function dpsBand(score: number): DPSBand {
+  return score < DPS_BANDS.low ? "low" : score < DPS_BANDS.high ? "medium" : "high";
+}
+
 // ── DPS sub-scores ────────────────────────────────────────────────────────────
 // Every sub-score is expressed 0–100 (higher = more risk) using the same tier
 // breakpoints as computeRisk. This matters: in v1.x the components sat on

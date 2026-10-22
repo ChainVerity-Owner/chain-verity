@@ -1,7 +1,7 @@
 "use client";
 
 import { useApp, useSuppliers } from "@/context/AppContext";
-import { calcDPS, trendLabel, buildDE, buildPM, buildOCF, getRec } from "@/lib/analytics";
+import { calcDPS, dpsBand, DPS_BANDS, trendLabel, buildDE, buildPM, buildOCF, getRec } from "@/lib/analytics";
 import { KpiCardV2 } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MiniDonut, LegendDot, HeatBar, Sparkline, TrendPill } from "@/components/ui/Charts";
@@ -17,9 +17,10 @@ export function Analytics() {
     return "muted-b" as const;
   }
 
-  const highRisk = suppliersAll.filter(s => calcDPS(s) >= 55).length;
-  const medRisk = suppliersAll.filter(s => calcDPS(s) >= 30 && calcDPS(s) < 55).length;
-  const lowRisk = suppliersAll.filter(s => calcDPS(s) < 30).length;
+  // Banded through the shared helper so these can't drift from the supplier card
+  const highRisk = suppliersAll.filter(s => dpsBand(calcDPS(s)) === "high").length;
+  const medRisk = suppliersAll.filter(s => dpsBand(calcDPS(s)) === "medium").length;
+  const lowRisk = suppliersAll.filter(s => dpsBand(calcDPS(s)) === "low").length;
 
   const riskSegments = [
     { value: highRisk, color: "#dc2626" },
@@ -110,9 +111,9 @@ export function Analytics() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 20 }}>
             {[
-              { label: "High DPS (≥55%)", count: highRisk, color: "#dc2626", pct: Math.round(highRisk / suppliersAll.length * 100) },
-              { label: "Medium DPS (30–54%)", count: medRisk, color: "#d97706", pct: Math.round(medRisk / suppliersAll.length * 100) },
-              { label: "Low DPS (<30%)", count: lowRisk, color: "#16a34a", pct: Math.round(lowRisk / suppliersAll.length * 100) },
+              { label: `High DPS (≥${DPS_BANDS.high}%)`, count: highRisk, color: "#dc2626", pct: Math.round(highRisk / suppliersAll.length * 100) },
+              { label: `Medium DPS (${DPS_BANDS.low}–${DPS_BANDS.high - 1}%)`, count: medRisk, color: "#d97706", pct: Math.round(medRisk / suppliersAll.length * 100) },
+              { label: `Low DPS (<${DPS_BANDS.low}%)`, count: lowRisk, color: "#16a34a", pct: Math.round(lowRisk / suppliersAll.length * 100) },
             ].map(b => (
               <div key={b.label}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
