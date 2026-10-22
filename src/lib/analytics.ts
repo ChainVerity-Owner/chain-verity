@@ -1,4 +1,4 @@
-import { Supplier, SeriesPoint, Recommendation, MCResult, RecoveryProfile, AltmanZResult } from "@/types";
+import { Supplier, SeriesPoint, Recommendation, MCResult, RecoveryProfile, AltmanZResult, FinancialRatios } from "@/types";
 
 /**
  * Altman Z'-Score (1995 private-firm variant).
@@ -338,48 +338,76 @@ export type DPSBasis = "full" | "operational";
  * to new data rather than a new methodology.
  *   1.0 — original weighting
  *   1.1 — missing financials renormalise instead of using a placeholder
+ *   2.0 — all sub-scores expressed 0–100 on computeRisk's tier breakpoints, so
+ *         renormalisation preserves range. Before this, an operational-basis
+ *         score could not exceed 20 and every private supplier read "low risk".
  */
-export const DPS_MODEL_VERSION = "1.1";
+export const DPS_MODEL_VERSION = "2.0";
 
 export function dpsBasis(s: Supplier): DPSBasis {
   return s.ratios ? "full" : "operational";
 }
+
+// ── DPS sub-scores ────────────────────────────────────────────────────────────
+// Every sub-score is expressed 0–100 (higher = more risk) using the same tier
+// breakpoints as computeRisk. This matters: in v1.x the components sat on
+// different scales (financial 23–74, operational 5–18, dependency 9 or 22), so
+// dropping the financial component for a supplier with no statements capped the
+// result at 20 — inside the LOW band. No private supplier could ever be scored
+// above "low risk" regardless of how badly it was performing. On a common
+// scale, removing a component changes the weighting but not the range.
+
+const dpsLiquidity = (r: FinancialRatios): number =>
+  r.quickRatio != null
+    ? r.quickRatio >= 1.5 ? 5 : r.quickRatio >= 1.0 ? 20 : r.quickRatio >= 0.8 ? 42 : r.quickRatio >= 0.6 ? 65 : r.quickRatio >= 0.4 ? 82 : 93
+    : r.currentRatio >= 2.0 ? 5 : r.currentRatio >= 1.5 ? 18 : r.currentRatio >= 1.2 ? 35 : r.currentRatio >= 1.0 ? 55 : r.currentRatio >= 0.8 ? 75 : 90;
+
+const dpsLeverage = (r: FinancialRatios): number =>
+  r.debtToEquity <= 0.5 ? 5 : r.debtToEquity <= 0.8 ? 18 : r.debtToEquity <= 1.2 ? 38 : r.debtToEquity <= 1.5 ? 58 : r.debtToEquity <= 2.0 ? 75 : 90;
+
+/** Gross margin is the earlier signal of cost pressure; fall back to net. */
+const dpsMargin = (r: FinancialRatios): number =>
+  r.grossMargin != null
+    ? r.grossMargin >= 0.40 ? 5 : r.grossMargin >= 0.28 ? 20 : r.grossMargin >= 0.18 ? 40 : r.grossMargin >= 0.10 ? 62 : r.grossMargin >= 0 ? 78 : 92
+    : r.netProfitMargin >= 0.15 ? 5 : r.netProfitMargin >= 0.10 ? 18 : r.netProfitMargin >= 0.07 ? 35 : r.netProfitMargin >= 0.05 ? 55 : r.netProfitMargin >= 0 ? 72 : 90;
+
+const dpsDelivery = (onTime: number | undefined): number => {
+  const ot = onTime ?? 95;
+  return ot >= 98 ? 5 : ot >= 95 ? 18 : ot >= 92 ? 35 : ot >= 90 ? 52 : ot >= 85 ? 70 : 85;
+};
+
+const dpsQuality = (ppm: number | undefined): number => {
+  const p = ppm ?? 150;
+  return p <= 75 ? 5 : p <= 150 ? 20 : p <= 250 ? 40 : p <= 400 ? 60 : p <= 600 ? 78 : 90;
+};
+
+/** Concentration: how much is riding on this one supplier, in $M exposure. */
+const dpsDependency = (exposure: number | undefined): number => {
+  const e = exposure ?? 0;
+  return e <= 1 ? 8 : e <= 3 ? 22 : e <= 5 ? 38 : e <= 8 ? 55 : e <= 12 ? 72 : 88;
+};
 
 export function calcDPS(s: Supplier): number {
   let score = 0;
   let weight = 0;
 
   // ── Financial (40%) ─────────────────────────────────────────────
-  // Omitted entirely when no statements exist. Earlier versions substituted a
-  // neutral placeholder here, which silently fabricated 40% of the figure for
-  // every supplier without ratios — the majority of a real portfolio.
+  // Omitted entirely when no statements exist — never substituted with a
+  // placeholder. The remaining components renormalise.
   if (s.ratios) {
     const r = s.ratios;
-    // Liquidity: use quick ratio when available (more conservative)
-    const liq = r.quickRatio != null
-      ? (r.quickRatio < 0.6 ? 28 : r.quickRatio < 0.8 ? 20 : r.currentRatio < 1 ? 18 : 10)
-      : (r.currentRatio < 1 ? 25 : 10);
-    const lev = r.debtToEquity > 1.5 ? 22 : 8;
-    // Gross margin as primary margin signal; fall back to net margin
-    const margin = r.grossMargin != null
-      ? (r.grossMargin < 0.10 ? 24 : r.grossMargin < 0.18 ? 18 : r.grossMargin < 0.28 ? 10 : 5)
-      : (r.netProfitMargin < 0.05 ? 20 : 5);
-    score += (liq + lev + margin) * 0.40;
+    score += ((dpsLiquidity(r) + dpsLeverage(r) + dpsMargin(r)) / 3) * 0.40;
     weight += 0.40;
   }
 
   // ── Operational (30%) ───────────────────────────────────────────
-  const onTimePenalty = (s.onTime ?? 100) < 90 ? 18 : 5;
-  const ppmPenalty = (s.qualityPPM ?? 0) > 300 ? 18 : 5;
-  score += ((onTimePenalty + ppmPenalty) / 2) * 0.30;
+  score += ((dpsDelivery(s.onTime) + dpsQuality(s.qualityPPM)) / 2) * 0.30;
   weight += 0.30;
 
   // ── Dependency (30%) ────────────────────────────────────────────
-  score += ((s.exposure ?? 0) > 10 ? 22 : 9) * 0.30;
+  score += dpsDependency(s.exposure) * 0.30;
   weight += 0.30;
 
-  // Renormalise across whichever components were present — same contract as
-  // computeRisk, so both headline numbers behave identically on thin data.
   return Math.min(95, Math.round(score / weight));
 }
 

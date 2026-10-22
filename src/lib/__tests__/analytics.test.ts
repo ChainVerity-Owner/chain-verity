@@ -135,11 +135,20 @@ describe("calcDPS", () => {
   });
 
   it("renormalises when financials are missing rather than using a placeholder", () => {
-    // onTime 95 and PPM 120 are both inside threshold → op = 5
-    // exposure 1 is under the dependency threshold          → dep = 9
+    // All sub-scores are 0–100 (model v2.0):
+    //   onTime 95  → delivery 18 ┐
+    //   PPM 120    → quality  20 ┴ operational = 19
+    //   exposure 1 → dependency 8
     // With no ratios the 40% financial component is dropped and the remaining
-    // 30/30 renormalise to 50/50: (5 + 9) / 2 = 7.
-    expect(calcDPS(noRatiosSupplier)).toBe(7);
+    // 30/30 renormalise to 50/50: (19 + 8) / 2 = 13.5 → 14.
+    expect(calcDPS(noRatiosSupplier)).toBe(14);
+  });
+
+  it("an operational-basis score can still reach the high band", () => {
+    // The v1.x defect: operational-basis scores were capped at 20, so no
+    // supplier without financials could ever exceed "low risk" (<25).
+    const bad = { ...noRatiosSupplier, onTime: 72, qualityPPM: 900, exposure: 20 };
+    expect(calcDPS(bad)).toBeGreaterThanOrEqual(55);
   });
 
   it("omitting financials does not by itself raise DPS", () => {
