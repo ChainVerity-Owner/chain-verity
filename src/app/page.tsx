@@ -1,5 +1,5 @@
-import { ChainVerityApp } from "@/components/ChainVerityApp";
+import { AppShell } from "@/components/AppShell";
 
 export default function Home() {
-  return <ChainVerityApp />;
+  return <AppShell />;
 }
