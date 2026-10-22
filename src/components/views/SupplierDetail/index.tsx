@@ -811,9 +811,17 @@ export function SupplierDetail() {
               );
             })()}
 
-            {/* Data feed pills */}
+            {/* Data feed pills — only the feeds that actually cover this supplier.
+                Financial, credit and ESG providers key off a resolved legal
+                entity, so for an unenriched supplier they cover nothing and
+                showing them contradicts the notice directly below. Event and
+                logistics feeds match on coordinates, so they genuinely do apply
+                — which is the point worth making on a private supplier. */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 7 }}>
-              {DATA_FEEDS.slice(0, 4).map((feed) => (
+              {(isUnenriched
+                ? DATA_FEEDS.filter((f) => f.type === "Events" || f.type === "Logistics")
+                : DATA_FEEDS.slice(0, 4)
+              ).map((feed) => (
                 <span key={feed.shortName} style={{ fontSize: 10, padding: "2px 7px", borderRadius: 5, background: feed.status === "Live" ? "rgba(22,163,74,.1)" : "var(--surface)", color: feed.status === "Live" ? "var(--ok)" : "var(--muted)", border: "1px solid var(--line)", fontWeight: 600 }}>
                   {feed.shortName} · {feed.status === "Live" ? "●" : "○"} {feed.status}
                 </span>
@@ -1183,9 +1191,34 @@ export function SupplierDetail() {
             </div>
           )}
 
-          {/* Charts */}
-          {/* Financial trend charts — tabbed */}
-          {(() => {
+          {/* Financial trend charts — tabbed.
+              Suppressed entirely for unenriched suppliers: the series fall back
+              to synthesised values when no ratios exist, which would render a
+              plausible current ratio and margin history for a company the panel
+              above says has no financial statements at all. */}
+          {isUnenriched ? (
+            <div className="card">
+              <h2>Financial trends</h2>
+              <div className="card-sub">Current ratio, leverage, margin, cash flow and EBITDA</div>
+              <div
+                style={{
+                  marginTop: 12,
+                  border: "1px dashed var(--line)",
+                  borderRadius: 8,
+                  padding: 18,
+                  textAlign: "center",
+                  background: "var(--surface)",
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 600 }}>No trends to plot</div>
+                <div className="muted" style={{ fontSize: 12, marginTop: 4, maxWidth: 460, marginLeft: "auto", marginRight: "auto" }}>
+                  Trend charts require filed or supplier-provided statements. We will not plot a
+                  modelled series here — a smooth, plausible-looking curve is the most convincing way
+                  to present data that does not exist.
+                </div>
+              </div>
+            </div>
+          ) : (() => {
             const edgT = edgarData?.trends;
             const charts = [
               { label: "Current Ratio",  el: <LineChart series={edgT?.currentRatio?.length    ? edgT.currentRatio    : buildCR(sLive)}  label="Current Ratio Trend"          formatY={(v) => v.toFixed(2)}                    higherIsBetter /> },

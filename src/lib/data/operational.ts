@@ -51,6 +51,10 @@ export const RECOVERY_PROFILES_US: Record<string, RecoveryProfile> = {
   xpo: { inventoryBufferDays: 7, timeToSurvive: 7, timeToRecover: 14, criticalComponents: ["Midwest Freight Lanes", "Last-mile Delivery Network", "Cross-dock Operations"], affectedProductLines: ["All product lines"], alternativeQualified: true, safetyStockRecommendation: 14, estimatedStockIncreaseCostM: 0.1, additionalStorageM3: 0, lastReviewed: "Oct 2025" },
   // mog: 5d increase × $25k/day ≈ $0.1M | drive assemblies ~3L × ~100/day × 5d ≈ 2m³
   mog: { inventoryBufferDays: 30, timeToSurvive: 30, timeToRecover: 75, criticalComponents: ["Precision Drive Assembly MOG-DRV-14", "Servo Actuator MOG-SA-08"], affectedProductLines: ["FlexDrive Series"], alternativeQualified: false, safetyStockRecommendation: 35, estimatedStockIncreaseCostM: 0.1, additionalStorageM3: 2, lastReviewed: "Oct 2025" },
+  // btm: privately held — no financials anywhere, but continuity data comes from
+  // the customer's own planning, so TTS/TTR and sourcing posture are fully known.
+  // 18d increase × $13k/day ≈ $0.2M | machined housings ~1.5L × ~180/day × 18d ≈ 5m³
+  btm: { inventoryBufferDays: 12, timeToSurvive: 12, timeToRecover: 85, criticalComponents: ["Machined Housing BTM-HSG-220", "Spindle Mount BTM-SPM-07"], affectedProductLines: ["FlexDrive Series", "ProControl 2000"], alternativeQualified: false, safetyStockRecommendation: 30, estimatedStockIncreaseCostM: 0.2, additionalStorageM3: 5, lastReviewed: "Sep 2025" },
 };
 
 // Company-level inventory investment capacity (US client)

@@ -96,4 +96,12 @@ export const suppliersExtraUS: Supplier[] = [
   { id: "hub", name: "Hubbell Incorporated", countryCode: "US", tier: 2, category: "Electronics", region: "NA", risk: 23, spend: 7.3, exposure: 1.7, onTime: 97, qualityPPM: 42, riskHistory: rh(21, 2), leadTimeTrend: [11,11,12,11], riskState: "STABLE", data: { updatedLabel: "Updated: 1 day ago", confidence: "HIGH" }, alerts: [] },
   { id: "cts", name: "CTS Corporation", countryCode: "US", tier: 3, category: "Electronics", region: "NA", risk: 35, spend: 3.4, exposure: 1.2, onTime: 93, qualityPPM: 112, riskHistory: rh(30, 5), leadTimeTrend: [15,16,16,17], riskState: "STABLE", data: { updatedLabel: "Updated: 4 days ago", confidence: "MEDIUM" }, alerts: [] },
   { id: "kic", name: "Keystone International", countryCode: "US", tier: 2, category: "Components", region: "NA", risk: 32, spend: 4.6, exposure: 1.4, onTime: 94, qualityPPM: 92, riskHistory: rh(28, 4), leadTimeTrend: [14,15,15,15], riskState: "STABLE", data: { updatedLabel: "Updated: 3 days ago", confidence: "MEDIUM" }, alerts: [] },
+
+  // ── Privately held, no public filings ──────────────────────────────────────
+  // The archetype a real supplier master is full of: a family-owned regional
+  // machine shop. No ticker, no DUNS, no ratios — so it resolves to
+  // `unenriched` and every financial surface declines to show a figure.
+  // Everything below is customer-supplied operational data, which is exactly
+  // what a buyer has on a private supplier in practice.
+  { id: "btm", name: "Brennan Tool & Machine", countryCode: "US", tier: 1, category: "Machining", region: "NA", risk: 0, spend: 4.8, exposure: 3.9, onTime: 91, qualityPPM: 340, riskHistory: rh(44, 9), leadTimeTrend: [18,19,21,23], riskState: "UNDER OBSERVATION", data: { updatedLabel: "Updated: 6 days ago", confidence: "LOW" }, alerts: [] },
 ];

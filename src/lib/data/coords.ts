@@ -42,6 +42,9 @@ export const SUPPLIER_COORDS: Record<string, [number, number]> = {
   chr: [-93.47, 44.85],  uft: [-71.17, 42.56],  bwxt: [-79.14, 37.41],
   gcf: [-114.31, 48.20], wkc: [-79.99, 40.44],  hub: [-73.08, 41.32],
   cts: [-88.09, 41.78],  kic: [-95.37, 29.76],
+  // Privately held — unenriched, but still mapped and still event-matched.
+  // Proximity alerting needs only coordinates, never a registry match.
+  btm: [-84.19, 39.76],  // Dayton, OH
 };
 
 // Country code → center coordinates fallback [lon, lat]

@@ -22,6 +22,7 @@ const UNENRICHED = new Set([
   "eby",  // Ebara Elliott Energy — JV, no standalone filing
   "esb",  // Esterline Technologies — acquired by TransDigm
   "uft",  // Unifirst Corporation — ambiguous against Unifirst Corp entities
+  "btm",  // Brennan Tool & Machine — family-owned machine shop, no filings, no LEI
   // EU
   "ork",  // Orkli S. Coop — Spanish cooperative, no LEI on record
   "rfl",  // Reflex Winkelmann — private GmbH
