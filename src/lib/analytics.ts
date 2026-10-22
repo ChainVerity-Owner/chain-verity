@@ -326,8 +326,33 @@ export const buildPM = (s: Supplier) => buildSeries(s, "pm", [2, 28], 2.5, (s) =
 export const buildOCF = (s: Supplier) => buildSeries(s, "ocf", [-5, 80], 8, () => null);
 export const buildEB = (s: Supplier) => buildSeries(s, "eb", [-10, 90], 9, () => null);
 
+/**
+ * Which components backed a DPS figure.
+ * "operational" means no financial statements were available, so the financial
+ * component was omitted and the remainder renormalised — never substituted.
+ */
+export type DPSBasis = "full" | "operational";
+
+/**
+ * Bump when weights or thresholds change, so a score movement can be attributed
+ * to new data rather than a new methodology.
+ *   1.0 — original weighting
+ *   1.1 — missing financials renormalise instead of using a placeholder
+ */
+export const DPS_MODEL_VERSION = "1.1";
+
+export function dpsBasis(s: Supplier): DPSBasis {
+  return s.ratios ? "full" : "operational";
+}
+
 export function calcDPS(s: Supplier): number {
-  let f = 20; // default when no ratios
+  let score = 0;
+  let weight = 0;
+
+  // ── Financial (40%) ─────────────────────────────────────────────
+  // Omitted entirely when no statements exist. Earlier versions substituted a
+  // neutral placeholder here, which silently fabricated 40% of the figure for
+  // every supplier without ratios — the majority of a real portfolio.
   if (s.ratios) {
     const r = s.ratios;
     // Liquidity: use quick ratio when available (more conservative)
@@ -339,13 +364,23 @@ export function calcDPS(s: Supplier): number {
     const margin = r.grossMargin != null
       ? (r.grossMargin < 0.10 ? 24 : r.grossMargin < 0.18 ? 18 : r.grossMargin < 0.28 ? 10 : 5)
       : (r.netProfitMargin < 0.05 ? 20 : 5);
-    f = liq + lev + margin;
+    score += (liq + lev + margin) * 0.40;
+    weight += 0.40;
   }
+
+  // ── Operational (30%) ───────────────────────────────────────────
   const onTimePenalty = (s.onTime ?? 100) < 90 ? 18 : 5;
   const ppmPenalty = (s.qualityPPM ?? 0) > 300 ? 18 : 5;
-  const op = (onTimePenalty + ppmPenalty) / 2;
-  const dep = (s.exposure ?? 0) > 10 ? 22 : 9;
-  return Math.min(95, Math.round(f * 0.40 + op * 0.30 + dep * 0.30));
+  score += ((onTimePenalty + ppmPenalty) / 2) * 0.30;
+  weight += 0.30;
+
+  // ── Dependency (30%) ────────────────────────────────────────────
+  score += ((s.exposure ?? 0) > 10 ? 22 : 9) * 0.30;
+  weight += 0.30;
+
+  // Renormalise across whichever components were present — same contract as
+  // computeRisk, so both headline numbers behave identically on thin data.
+  return Math.min(95, Math.round(score / weight));
 }
 
 // ── Monte Carlo helpers ───────────────────────────────────────────────────────

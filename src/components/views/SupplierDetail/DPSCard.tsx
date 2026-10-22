@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Supplier, MCResult } from "@/types";
-import { calcDPS, runMC, topDrivers } from "@/lib/analytics";
+import { calcDPS, runMC, topDrivers, dpsBasis, DPS_MODEL_VERSION } from "@/lib/analytics";
 import { RECOVERY_PROFILES, RECOVERY_PROFILES_US } from "@/lib/data";
 import { InfoTip } from "@/components/ui/InfoTip";
 
@@ -12,6 +12,7 @@ interface DPSCardProps {
 
 export function DPSCard({ supplier }: DPSCardProps) {
   const det = calcDPS(supplier);
+  const basis = dpsBasis(supplier);
   const profiles = supplier.region === "US" ? RECOVERY_PROFILES_US : RECOVERY_PROFILES;
   const recoveryProfile = profiles[supplier.id];
   const [mc, setMc] = useState<MCResult>(() => runMC(supplier, 5000, recoveryProfile));
@@ -41,6 +42,13 @@ export function DPSCard({ supplier }: DPSCardProps) {
           <div className="muted" style={{ marginTop: 5 }}>
             Operational disruption likelihood. Deterministic model + Monte Carlo stress test.
           </div>
+          {basis === "operational" && (
+            <div className="note" style={{ marginTop: 9, maxWidth: 440 }}>
+              <b>Operational basis.</b> No financial statements are available for this supplier, so
+              the 40% financial component is <b>omitted and the remainder renormalised</b> — not
+              filled with an assumed value. This score reflects delivery, quality and dependency only.
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexShrink: 0 }}>
           <div className="dps-hero">
@@ -50,7 +58,30 @@ export function DPSCard({ supplier }: DPSCardProps) {
             </div>
             <div className={`dps-pill ${pc}`}>{pl}</div>
           </div>
-          <span className="badge info">Model v0.1</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+            <span className="badge info">Model v{DPS_MODEL_VERSION}</span>
+            <span
+              title={
+                basis === "full"
+                  ? "Financial, operational and dependency components all contributed to this score."
+                  : "No financial statements available — the financial component was omitted and the remaining components renormalised."
+              }
+              style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "2px 8px",
+                borderRadius: 9999,
+                whiteSpace: "nowrap",
+                color: basis === "full" ? "var(--ok)" : "var(--warn)",
+                background:
+                  basis === "full"
+                    ? "color-mix(in srgb, var(--ok) 12%, transparent)"
+                    : "color-mix(in srgb, var(--warn) 14%, transparent)",
+              }}
+            >
+              {basis === "full" ? "Full basis" : "Operational basis"}
+            </span>
+          </div>
         </div>
       </div>
 

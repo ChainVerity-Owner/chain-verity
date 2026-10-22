@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeRisk, calcDPS, runMC, trendLabel, topDrivers, getRec, computeAltmanZ, computeResiliency, computeOnTime, computeLeadTimeDrift } from "@/lib/analytics";
+import { computeRisk, calcDPS, dpsBasis, runMC, trendLabel, topDrivers, getRec, computeAltmanZ, computeResiliency, computeOnTime, computeLeadTimeDrift } from "@/lib/analytics";
 import type { Supplier, SeriesPoint } from "@/types";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -132,6 +132,27 @@ describe("calcDPS", () => {
 
   it("handles missing ratios", () => {
     expect(() => calcDPS(noRatiosSupplier)).not.toThrow();
+  });
+
+  it("renormalises when financials are missing rather than using a placeholder", () => {
+    // onTime 95 and PPM 120 are both inside threshold → op = 5
+    // exposure 1 is under the dependency threshold          → dep = 9
+    // With no ratios the 40% financial component is dropped and the remaining
+    // 30/30 renormalise to 50/50: (5 + 9) / 2 = 7.
+    expect(calcDPS(noRatiosSupplier)).toBe(7);
+  });
+
+  it("omitting financials does not by itself raise DPS", () => {
+    // A supplier with healthy financials should not look riskier simply because
+    // its statements were removed — the old placeholder caused exactly that.
+    const withRatios = { ...stableSupplier };
+    const withoutRatios = { ...stableSupplier, ratios: undefined };
+    expect(calcDPS(withoutRatios)).toBeLessThanOrEqual(calcDPS(withRatios) + 2);
+  });
+
+  it("dpsBasis reports which components backed the score", () => {
+    expect(dpsBasis(stableSupplier)).toBe("full");
+    expect(dpsBasis(noRatiosSupplier)).toBe("operational");
   });
 
   it("high exposure increases DPS", () => {

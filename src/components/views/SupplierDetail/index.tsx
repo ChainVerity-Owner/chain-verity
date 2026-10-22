@@ -597,6 +597,23 @@ export function SupplierDetail() {
 
   // Resolve financial data source for this supplier
   const financialSource = (() => {
+    // Claim a source only when financial data actually exists. Deriving the
+    // label from country alone asserted a provenance ("Supplier-Submitted") for
+    // suppliers that have no statements at all — the same class of defect as a
+    // placeholder score, and directly contradicted by the DPS operational-basis
+    // notice on the same screen.
+    const hasAnyFinancials = !!s.ratios || !!edgarData?.ratios;
+    if (!hasAnyFinancials && !(isEdgarTicker && edgarLoading)) {
+      return {
+        icon: "—",
+        label: "No financial statements on file",
+        detail: "Private entity · not filed and not supplier-provided",
+        confidence: "Medium" as const,
+        live: false,
+        // No source means nothing to be confident about — suppress the rating.
+        noSource: true,
+      };
+    }
     if (isEdgarTicker && edgarData) {
       const date = edgarData.filingDate
         ? new Date(edgarData.filingDate).toLocaleDateString("en-US", { month: "short", year: "numeric" })
@@ -1110,13 +1127,15 @@ export function SupplierDetail() {
                   <span style={{ fontSize: 12, color: "var(--fg-muted)" }}>
                     {financialSource.icon} {financialSource.label}
                   </span>
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
-                    background: financialSource.confidence === "High" ? "rgba(22,163,74,.1)" : "rgba(217,119,6,.1)",
-                    color: financialSource.confidence === "High" ? "var(--ok)" : "var(--warn)",
-                  }}>
-                    {financialSource.confidence}
-                  </span>
+                  {!("noSource" in financialSource && financialSource.noSource) && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 4,
+                      background: financialSource.confidence === "High" ? "rgba(22,163,74,.1)" : "rgba(217,119,6,.1)",
+                      color: financialSource.confidence === "High" ? "var(--ok)" : "var(--warn)",
+                    }}>
+                      {financialSource.confidence}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="muted" style={{ fontSize: 11, marginBottom: 12 }}>{financialSource.detail}</div>
@@ -1203,13 +1222,15 @@ export function SupplierDetail() {
                   <span className="muted" style={{ fontSize: 11 }}>Source:</span>
                   <span style={{ fontSize: 11, color: "var(--fg-muted)" }}>{financialSource.icon} {financialSource.label}</span>
                   <span className="muted" style={{ fontSize: 11 }}>· {financialSource.detail}</span>
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 4, marginLeft: "auto",
-                    background: financialSource.confidence === "High" ? "rgba(22,163,74,.1)" : "rgba(217,119,6,.1)",
-                    color: financialSource.confidence === "High" ? "var(--ok)" : "var(--warn)",
-                  }}>
-                    {financialSource.confidence} confidence
-                  </span>
+                  {!("noSource" in financialSource && financialSource.noSource) && (
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 4, marginLeft: "auto",
+                      background: financialSource.confidence === "High" ? "rgba(22,163,74,.1)" : "rgba(217,119,6,.1)",
+                      color: financialSource.confidence === "High" ? "var(--ok)" : "var(--warn)",
+                    }}>
+                      {financialSource.confidence} confidence
+                    </span>
+                  )}
                 </div>
               </div>
             );
