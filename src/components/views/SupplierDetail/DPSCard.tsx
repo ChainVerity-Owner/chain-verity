@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Supplier, MCResult } from "@/types";
 import { calcDPS, runMC, topDrivers, dpsBasis, dpsBand, DPS_MODEL_VERSION } from "@/lib/analytics";
-import { RECOVERY_PROFILES, RECOVERY_PROFILES_US } from "@/lib/data";
+import { useApp } from "@/context/AppContext";
 import { InfoTip } from "@/components/ui/InfoTip";
 
 interface DPSCardProps {
@@ -13,8 +13,10 @@ interface DPSCardProps {
 export function DPSCard({ supplier }: DPSCardProps) {
   const det = calcDPS(supplier);
   const basis = dpsBasis(supplier);
-  const profiles = supplier.region === "US" ? RECOVERY_PROFILES_US : RECOVERY_PROFILES;
-  const recoveryProfile = profiles[supplier.id];
+  // Was `supplier.region === "US"`, which is never true — US suppliers carry
+  // region "NA" — so this silently used Worcester Bosch profiles in both modes.
+  const { platformRecoveryProfiles } = useApp();
+  const recoveryProfile = platformRecoveryProfiles[supplier.id];
   const [mc, setMc] = useState<MCResult>(() => runMC(supplier, 5000, recoveryProfile));
   const [iters, setIters] = useState(5000);
 

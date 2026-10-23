@@ -4,7 +4,6 @@ import { useApp, useSuppliers } from "@/context/AppContext";
 import { KpiCardV2 } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { MiniDonut, LegendDot, HeatBar, PulseDot, Sparkline, RiskGauge } from "@/components/ui/Charts";
-import { RECOVERY_PROFILES, RECOVERY_PROFILES_US } from "@/lib/data";
 import { DashboardRiskMap } from "@/components/ui/DashboardRiskMap";
 import { InfoTip } from "@/components/ui/InfoTip";
 
@@ -20,7 +19,7 @@ function riskPillClass(risk: number) {
 
 // ── CFO Dashboard ─────────────────────────────────────────────────────────────
 function CFODashboard() {
-  const { setRoute, currency, platformContracts, platformAlerts, clientMode } = useApp();
+  const { setRoute, currency, platformContracts, platformAlerts, clientMode , platformRecoveryProfiles } = useApp();
   const suppliers = useSuppliers();
 
   const totalExposure = suppliers.reduce((sum, s) => sum + (s.exposure ?? 0), 0);
@@ -57,7 +56,7 @@ function CFODashboard() {
   const avgRiskNow = avgRiskTrend[avgRiskTrend.length - 1] || 0;
   const avgRiskDelta = avgRiskNow - (avgRiskTrend[0] || 0);
 
-  const profiles = clientMode === "generic" ? RECOVERY_PROFILES_US : RECOVERY_PROFILES;
+  const profiles = platformRecoveryProfiles;
   // Find the supplier closest to a line stop (smallest timeToSurvive, no alternative qualified)
   const criticalSupplier = suppliers
     .map(s => ({ s, p: profiles[s.id] }))

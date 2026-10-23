@@ -8,7 +8,6 @@ import { riskStateClass, riskStateLabel } from "@/lib/utils";
 import { EuropeMap } from "@/components/ui/Charts";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { Supplier } from "@/types";
-import { RECOVERY_PROFILES, RECOVERY_PROFILES_US } from "@/lib/data";
 
 interface SubtierNode {
   name: string;
@@ -218,9 +217,9 @@ const SCENARIOS: Scenario[] = [
 ];
 
 function DisruptionSimModal({ initialId, onClose }: { initialId: string | null; onClose: () => void }) {
-  const { clientMode, currency, setRoute } = useApp();
+  const { clientMode, currency, setRoute , platformRecoveryProfiles } = useApp();
   const suppliersAll = useSuppliers();
-  const profiles = clientMode === "generic" ? RECOVERY_PROFILES_US : RECOVERY_PROFILES;
+  const profiles = platformRecoveryProfiles;
 
   // Suppliers with a recovery profile can be simulated with full fidelity
   const simulatable = suppliersAll.filter((s) => profiles[s.id]);

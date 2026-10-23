@@ -15,7 +15,7 @@ import { CreditRiskCard } from "./CreditRiskCard";
 import { ResiliencyCard } from "./ResiliencyCard";
 import { ESGCard } from "./ESGCard";
 import { moneyM, fmt2, fmtPct, downloadStub, riskStateClass } from "@/lib/utils";
-import { RECOVERY_PROFILES, DATA_FEEDS } from "@/lib/data";
+import { DATA_FEEDS } from "@/lib/data";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { ProvenanceChip } from "@/components/ui/ProvenanceChip";
 import { PrivateIntelligenceCard } from "./PrivateIntelligenceCard";
@@ -755,7 +755,7 @@ export function SupplierDetail() {
                       </span>
                     )}
                     {(() => {
-                      const rp = RECOVERY_PROFILES[s.id];
+                      const rp = platformRecoveryProfiles[s.id];
                       const isSingleSource = rp
                         ? !rp.alternativeQualified
                         : (s.spend ?? 0) > 0 && ((s.exposure ?? 0) / s.spend!) > 0.5;
@@ -1280,8 +1280,8 @@ export function SupplierDetail() {
           <ContactCard supplier={s} />
 
           {/* Business Continuity / TTR-TTS */}
-          {RECOVERY_PROFILES[s.id] && (() => {
-            const rp = RECOVERY_PROFILES[s.id];
+          {platformRecoveryProfiles[s.id] && (() => {
+            const rp = platformRecoveryProfiles[s.id];
             const gap = rp.timeToRecover - rp.timeToSurvive;
             return (
               <div className="card">

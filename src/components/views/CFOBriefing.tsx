@@ -2,7 +2,6 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useApp, useSuppliers } from "@/context/AppContext";
-import { RECOVERY_PROFILES, RECOVERY_PROFILES_US } from "@/lib/data";
 import { ExecutionLog, ExecEntry } from "@/components/ui/ExecutionLog";
 
 // ── Platform catches (validated historical alerts) ────────────────────────────
@@ -312,12 +311,12 @@ function DecisionCard({ d, onResolve }: { d: Decision; onResolve: (id: string) =
 // ── Main view ──────────────────────────────────────────────────────────────────
 
 export function CFOBriefing() {
-  const { setRoute, currency, clientMode, platformContracts, platformAlerts } = useApp();
+  const { setRoute, currency, clientMode, platformContracts, platformAlerts , platformRecoveryProfiles } = useApp();
   const suppliers = useSuppliers();
   const [resolvedIds, setResolvedIds] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
 
-  const profiles = clientMode === "generic" ? RECOVERY_PROFILES_US : RECOVERY_PROFILES;
+  const profiles = platformRecoveryProfiles;
   const isWB = clientMode === "wb";
 
   // ── Data derivations ─────────────────────────────────────────────────────────
