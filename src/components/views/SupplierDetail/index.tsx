@@ -18,6 +18,7 @@ import { moneyM, fmt2, fmtPct, downloadStub, riskStateClass } from "@/lib/utils"
 import { RECOVERY_PROFILES, DATA_FEEDS } from "@/lib/data";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { ProvenanceChip } from "@/components/ui/ProvenanceChip";
+import { PrivateIntelligenceCard } from "./PrivateIntelligenceCard";
 import { supplierProvenance, PROVENANCE_META } from "@/lib/data/provenance";
 
 interface SanctionsResult {
@@ -434,7 +435,7 @@ function LeverageChart({ fh }: { fh: import("@/types").FinancialHealth }) {
 }
 
 export function SupplierDetail() {
-  const { params, setSimulatedEscalation, simulatedEscalation, supplierNotes, addSupplierNote, deleteSupplierNote, role, currency, clientMode, platformProductLines, setRoute } = useApp();
+  const { params, setSimulatedEscalation, simulatedEscalation, supplierNotes, addSupplierNote, deleteSupplierNote, role, currency, clientMode, platformProductLines, platformRecoveryProfiles, setRoute } = useApp();
   const allSuppliers = useSuppliers();
   const s = allSuppliers.find((x) => x.id === params.id) || allSuppliers[0];
   const [obsNote, setObsNote] = useState({ text: "Risk cannot be closed manually. All approvals determine closure.", color: "var(--muted)" });
@@ -842,31 +843,10 @@ export function SupplierDetail() {
                 We found no SEC filing and no LEI for this entity, so nothing below is sourced from a
                 third party.
               </div>
-              <div className="grid-2" style={{ marginTop: 12 }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 7 }}>
-                    Shown — supplied by you
-                  </div>
-                  {["Annual spend", "On-time delivery", "Quality PPM", "Site locations", "Tier & category"].map((k) => (
-                    <div key={k} style={{ fontSize: 12, padding: "2px 0" }}>
-                      <span style={{ color: "var(--ok)" }}>✓</span> {k}
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 12, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 7 }}>
-                    Withheld — cannot be sourced
-                  </div>
-                  {["Risk score", "Financial ratios", "Credit rating", "Insolvency probability", "Sanctions screening"].map((k) => (
-                    <div key={k} className="muted" style={{ fontSize: 12, padding: "2px 0" }}>
-                      <span style={{ opacity: .55 }}>—</span> {k}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="note" style={{ marginTop: 12 }}>
-                <b>We will not manufacture a score from one field.</b> Add financials manually, supply a
-                DUNS or LEI to re-run resolution, or request the data from the supplier directly.
+              <div className="note" style={{ marginTop: 10 }}>
+                <b>We will not manufacture a credit rating or a revenue figure for this entity.</b>{" "}
+                What is knowable without statements — payment behaviour, registry filings, delivery
+                trajectory and continuity exposure — is assessed below.
               </div>
             </div>
             <div className="inline" style={{ flexShrink: 0 }}>
@@ -874,6 +854,15 @@ export function SupplierDetail() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* The analysis that replaces a balance sheet */}
+      {isUnenriched && (
+        <PrivateIntelligenceCard
+          supplier={s}
+          recoveryProfile={platformRecoveryProfiles[s.id]}
+          currency={currency}
+        />
       )}
 
       {/* ── Tab bar ─────────────────────────────────────────────────── */}

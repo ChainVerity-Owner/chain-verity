@@ -278,6 +278,52 @@ export interface Supplier {
     confidence: "HIGH" | "MEDIUM" | "LOW";
     drivers: string[];      // e.g. ["Payment delays detected", "Port congestion EU"]
   };
+  privateSignals?: PrivateSignals;
+}
+
+// ── Private-company intelligence ──────────────────────────────────────────────
+// A private supplier files nothing, so the balance sheet is unavailable — but
+// it is not the only evidence of financial stress, and it is rarely the
+// earliest. Two classes of signal survive the absence of statements:
+//
+//   First-party   — facts the customer already holds in AP and procurement.
+//                   A supplier asking to shorten terms, or assigning its
+//                   receivables to a factor, is visible to you months before
+//                   it would surface in a filing.
+//   Public record — UCC filings, WARN notices, liens and judgments are public
+//                   for private entities and need no financial disclosure.
+
+export type PublicRecordKind = "ucc" | "warn" | "lien" | "judgment" | "bankruptcy";
+
+export interface PublicRecordItem {
+  kind: PublicRecordKind;
+  date: string;              // ISO date
+  headline: string;
+  detail: string;
+  source: string;            // the actual registry, e.g. "Ohio Secretary of State"
+  severity: "info" | "warn" | "risk";
+}
+
+export interface TermsChangeRequest {
+  date: string;
+  fromDays: number;
+  toDays: number;
+  note: string;
+  granted: boolean;
+}
+
+export interface PrivateSignals {
+  /** Contracted payment terms, in days. */
+  paymentTermsDays: number;
+  /** Supplier-initiated requests to change terms — a cash-position tell. */
+  termsChangeRequests?: TermsChangeRequest[];
+  /** Notice of assignment: the supplier has factored its receivables. */
+  factoringNotice?: { date: string; factor: string; detail: string };
+  publicRecord?: PublicRecordItem[];
+  /** Share of the supplier's revenue this customer represents — sets how much
+   *  leverage exists to require financial disclosure at renewal. */
+  estimatedRevenueSharePct?: number;
+  revenueShareBasis?: string;
 }
 
 export interface Contract {
